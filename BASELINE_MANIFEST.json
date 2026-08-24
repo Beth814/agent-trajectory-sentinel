@@ -11,6 +11,7 @@
    "derail/evaluation/rollback_metrics.py": "73459b7ecbe707af64c454b34d6b47f1f265f0f823b93fdd1809159c98fc00ac",
    "derail/evaluation/stats.py": "375f8282df4f7b2ec11cb335eb23a714776dbec2e45c738f593612d057e6e499",
    "derail/experiments/__init__.py": "b42f2099187886def637d6aa840022266e05cb6c987a9394e708e23cd505eb46",
+   "derail/experiments/audit_healthy_admission.py": "4f15c1f573dd399a12294a18cc3e72bb1b92576d6816e290aea6ba8c1c99991f",
    "derail/experiments/collect_framework_real_traces.py": "92a8586695048fe78657bbbe1be30755390e48667a2f2e78cf8995e7b4231649",
    "derail/experiments/collect_framework_traces.py": "2d0269a77786adef3d94076eaff46615fa3b151101994535858e80a47e510746",
    "derail/experiments/collect_gemini_long.py": "bcbaf10d6f8f27ab305483d88e42c6cb0f097b7a3b1ddcd937aaded251476f99",
@@ -184,6 +185,7 @@
    "results/framework_monitor_freeze.json": "0b0b25bf9f9598085a7eb09e993113d0877394150e86bdc74f203270a3a583d8",
    "results/framework_monitor_freeze_compat.json": "0c6c3cfac87b369eb2e500c11fed12aecee12ecb11f230693be173ac04ff14e0",
    "results/framework_real_tool_report.md": "6049d9fb7caebe86ea534944a6c48d8f8bebc48eee3b4f0332657b1cfbd9aab1",
+   "results/healthy_admission_audit.md": "5e9583ccdb7fe90b0e2b0d12a7f7e3f76d257594f3d73ac9333ee4869d8f7b74",
    "results/horizon_report.md": "2cccaa3648cdc8ecbf640b4b24d7612b630ec3742a5a206d4b69f3791b07bf9e",
    "results/hybrid_report.md": "74693e8476db074704c978c5ac4356a7ae2e6cbb5e57031026159cebc0493f0c",
    "results/layer_alignment_report.md": "b34c90ea3eba73c46e2e5a98e06f4b1ddc32cd1c8293a2d4995dfbaff2751bd2",
@@ -295,6 +297,7 @@
    "results/tables/h3_calibration.csv": "8874c406d938fb4cd2ffa333da7a9700629917c92b37affd862055e8d144edfc",
    "results/tables/h3_escalation.csv": "ae0350e467f7a040295e85537572497c919503741d2d7ec22b91b5f57e6a435a",
    "results/tables/h3_reliability.csv": "09ec5adf798fbbaf21bacba86db27c832a206d618be8073a7dead3d660b22e4f",
+   "results/tables/healthy_admission_audit.csv": "4600c8553bdd37c66ba7fa1c7cd42e7e3f215800ce0c782e8a73c9423f5e33a9",
    "results/tables/healthy_intervention.csv": "aaa3bf99e8ea074a8cb72eec836d0bf726265cfb8ebc6a9e2d61c60843a7d188",
    "results/tables/hmt_ab.SINGLE_SPLIT.md": "38e2f8147a8f5e07a896d8f1bee3e21679c66254aacedc426c952e987055d18f",
    "results/tables/hmt_ab_real.csv": "e7eb370414e67b5d8362a50914642c0788f2501ba46314441d813d288e140fd3",
@@ -12254,7 +12257,7 @@
    "traces/real_task_rollback/rollback-multi_city_weather-wrong_document-01.jsonl": "016e3d96970e619d7bbefed76acb91915d549c6467d270f1a29be1c02159f401"
   },
   "docs": {
-   "CHECKSUMS.md": "96c4fe9b23cb8b431344112014129f9aa1f2dcf172dbec27f32b8c6c2094873f",
+   "CHECKSUMS.md": "2dbdd93083aa15f753fa28fab05fbdaeae7024024a6cbdd80bd34578e0cdbd18",
    "CLAIMS.md": "b8f7f2705f0fa82c9449b14eac5fd16766dbc6076c2c4ff39b2b30994c93884f",
    "CONTRIBUTIONS.md": "f1ace0e4b61b0626265f17671da8bb64f664e6dce29c0fb9e86b7e575428e144",
    "DATA_CARD.md": "20006a547dd2fe6e3d1d58a669e1b2a03c357f134eae089fffd0f49d79c4543f",
@@ -12270,5 +12273,5 @@
   }
  },
  "note": "",
- "file_count": 12260
+ "file_count": 12263
 }
