@@ -59,6 +59,12 @@ from derail.telemetry.events import SCHEMA_VERSION
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TRACES_ROOT = REPO_ROOT / "traces"
 OUT_PATH = REPO_ROOT / "results" / "framework_monitor_freeze.json"
+#: Companion to the freeze, written by `devtools/baseline_lock.py`. The freeze
+#: artifact itself is never edited again: a dependency file that has changed
+#: since the freeze may only be accepted by being PROVEN to reconstruct the
+#: identical monitor, and that proof is recorded beside the freeze rather than
+#: inside it. Absent, every dependency must match the freeze exactly.
+COMPAT_PATH = REPO_ROOT / "results" / "framework_monitor_freeze_compat.json"
 
 #: Same five corpora fixed as the rollback/retry study's source pool.
 FIT_CORPORA = (
@@ -280,6 +286,25 @@ def build_freeze_artifact() -> dict:
     return artifact
 
 
+def _proven_compatible_blobs(freeze_path: Path) -> dict[str, list[str]]:
+    """Dependency revisions recorded as reconstructing this exact monitor.
+
+    Empty unless the companion lock exists AND still describes this freeze
+    byte for byte -- an edited freeze invalidates every proof taken against
+    the old one, and must not be waved through by a stale allowlist.
+    """
+    if not COMPAT_PATH.exists():
+        return {}
+    compat = json.loads(COMPAT_PATH.read_text("utf-8"))
+    if compat.get("freeze_sha256") != _sha256_file(freeze_path):
+        raise RuntimeError(
+            f"{COMPAT_PATH.name} was recorded against a different "
+            f"{freeze_path.name} than the one on disk. The freeze is meant to "
+            f"be immutable; either it was edited, or the lock is stale. "
+            f"Refusing to accept any proven-equivalent dependency revision.")
+    return compat.get("compatible_dependency_blob_hashes", {})
+
+
 def load_frozen_monitor(freeze_path: Path = OUT_PATH):
     """Re-fit the monitor described by an existing freeze artifact.
 
@@ -298,14 +323,24 @@ def load_frozen_monitor(freeze_path: Path = OUT_PATH):
     from derail.common import Standardizer
 
     artifact = json.loads(freeze_path.read_text("utf-8"))
-    for path, frozen_blob in artifact["dependency_blob_hashes"].items():
-        current_blob = _git("rev-parse", f"HEAD:{path}")
-        if current_blob != frozen_blob:
-            raise RuntimeError(
-                f"dependency {path} has drifted since the freeze "
-                f"({frozen_blob!r} -> {current_blob!r}) -- do not score "
-                f"against a monitor whose dependency chain no longer "
-                f"matches its own freeze artifact.")
+    drifted = {path: _git("rev-parse", f"HEAD:{path}")
+               for path, frozen_blob in artifact["dependency_blob_hashes"].items()
+               if _git("rev-parse", f"HEAD:{path}") != frozen_blob}
+    # Consulted only when something has actually drifted, so an unchanged
+    # tree never depends on the companion lock existing or being current.
+    proven = _proven_compatible_blobs(freeze_path) if drifted else {}
+    for path, current_blob in drifted.items():
+        frozen_blob = artifact["dependency_blob_hashes"][path]
+        if current_blob in proven.get(path, ()):
+            continue
+        raise RuntimeError(
+            f"dependency {path} has drifted since the freeze "
+            f"({frozen_blob!r} -> {current_blob!r}) and that revision is not "
+            f"recorded as proven-equivalent -- do not score against a monitor "
+            f"whose dependency chain no longer matches its own freeze "
+            f"artifact. Run `py -m devtools.baseline_lock --prove` to "
+            f"establish equivalence, which fails unless the reconstructed "
+            f"monitor is identical.")
 
     episodes, ids, file_hashes = _load_healthy_episodes(tuple(artifact["fit_corpora"]))
     by_id = dict(zip(ids, episodes))
@@ -328,11 +363,17 @@ def load_frozen_monitor(freeze_path: Path = OUT_PATH):
 
     standardizer = Standardizer()
     standardizer.fit(train)
+    # Inner hyperparameters come from the artifact, not from whatever
+    # ESNEnsembleMonitor currently defaults to. They were always recorded;
+    # passing them is what makes the reconstruction a property of the freeze
+    # instead of a property of today's source, so a later default change
+    # cannot quietly reinterpret this monitor.
     monitor = ChannelMaxESNMonitor(
         standardizer, K=artifact["outer_monitor_config"]["K"],
         cusum=artifact["outer_monitor_config"]["cusum"],
         seed=artifact["outer_monitor_config"]["seed"],
-        name=artifact["monitor_name"], channels=tuple(artifact["channels"]))
+        name=artifact["monitor_name"], channels=tuple(artifact["channels"]),
+        **artifact["inner_esn_hyperparameters"])
     monitor.fit(train)
     return monitor, float(artifact["theta_b5"]), artifact
 

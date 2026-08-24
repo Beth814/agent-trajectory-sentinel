@@ -30,7 +30,7 @@
    "derail/experiments/evaluate_hmte_synthetic.py": "507b650ba29b248366f9e10f176920805eaa0bddf3e9223dccaca3afb95acb5d",
    "derail/experiments/expand_healthy.py": "6259828d69280e11c779b84c31f3e272a28172b94b3e5b0c5b7b943fd30d9b0d",
    "derail/experiments/explain_hybrid.py": "20db1c21755f0a732c99475f45e59ce2478844f9c4d8e17fa5451e71a04a1eb7",
-   "derail/experiments/framework_monitor_freeze.py": "a9dfff277c64f079804077e36e8ac8d7ab6e96c86f0f9c775b53541ffb78d1a8",
+   "derail/experiments/framework_monitor_freeze.py": "591bebfeb00dd4293cb405dfdecd37f94820b8eb6b8644af8cad9fda66058c77",
    "derail/experiments/import_aftraj.py": "334ae9cbdc6a8c639899c85d9029ee5cd358e2fb093a77dee7e250b4bb903639",
    "derail/experiments/plots.py": "b0b871e27bd9eec4c12468d3ca02d268c4f65affdc5e0e8f63b04fe54f12da65",
    "derail/experiments/run_ablation.py": "bcf66022f05ee6a1c377c8e978f4762c0fdd46aba749812d6f1b2d08fa45b3ac",
@@ -101,6 +101,7 @@
    "devtools/__init__.py": "7546f153e7482286da7350c05dc402c39956405db90472ece6f3c050a0ce68d5",
    "devtools/artifact_manifest.py": "abc18f774e8ba37e821531872e951b678a7c9ca85b3ea289bac887ee0ab9f316",
    "devtools/arxiv_package.py": "aebd7392ab4a289edbef4565bfc0a396a7959e1aa614b36d8e088c09da265d83",
+   "devtools/baseline_lock.py": "3af39a54dbfe7573c4fe0e248504b52307518a147d34c23f4607ba33ad4de7f7",
    "devtools/behavior_snapshot.py": "14e4f631689d7e06db9a2d54642d1e47c1b377ece3a533bc1f3c8176ab7ecbee",
    "devtools/claims_ledger.py": "85644f6a8e81e2381e69050c8dc52b01fcd949983b0557736575a91b87a3c38d",
    "devtools/collection_report.py": "f14a5ebab6917e1d2349688017c6ea832117a0b0d189a1d4955214bf45e3549e",
@@ -12251,7 +12252,7 @@
    "traces/real_task_rollback/rollback-multi_city_weather-wrong_document-01.jsonl": "016e3d96970e619d7bbefed76acb91915d549c6467d270f1a29be1c02159f401"
   },
   "docs": {
-   "CHECKSUMS.md": "9e87aea814c4adf909d280b9c4b060fe585e821201e8b84d68a243c451710f57",
+   "CHECKSUMS.md": "47eca8823ceafe0239661ae72791cc2096f8ad34ca57065e4cb1bffbce596a10",
    "CLAIMS.md": "b8f7f2705f0fa82c9449b14eac5fd16766dbc6076c2c4ff39b2b30994c93884f",
    "CONTRIBUTIONS.md": "f1ace0e4b61b0626265f17671da8bb64f664e6dce29c0fb9e86b7e575428e144",
    "DATA_CARD.md": "20006a547dd2fe6e3d1d58a669e1b2a03c357f134eae089fffd0f49d79c4543f",
@@ -12267,5 +12268,5 @@
   }
  },
  "note": "",
- "file_count": 12257
+ "file_count": 12258
 }
