@@ -56,12 +56,17 @@ def _split_60_20_20(episodes: list, seed: int):
 def calibrate(healthy_episodes: list, *, channels: tuple[str, ...] = ("e", "m"),
              fa_budget: float = 0.05, K: int = 8, seed: int = 0,
              min_healthy: int = _MIN_HEALTHY,
-             warn_below: int = _RECOMMENDED_HEALTHY) -> DeploymentCalibration:
+             warn_below: int = _RECOMMENDED_HEALTHY,
+             **esn_kwargs) -> DeploymentCalibration:
     """Fit a fresh `ChannelMaxESNMonitor` on ONE deployment's own healthy
     episodes: no failure labels, no other deployment's data. 60/20/20
     train/val/test split of `healthy_episodes` (train fits the
     standardizer+monitor, val picks `theta` at `fa_budget` via
     `pick_threshold`, test is left for the caller to score FA on).
+
+    `esn_kwargs` reach `ChannelMaxESNMonitor` unchanged, so a diagnostic can
+    vary one ESN hyperparameter and still go through this exact procedure
+    rather than a reimplementation of it.
 
     Raises ValueError below `min_healthy`, and on a non-positive threshold.
     Both mean too few healthy episodes: the monitor's own 85/15 held fold
@@ -82,7 +87,7 @@ def calibrate(healthy_episodes: list, *, channels: tuple[str, ...] = ("e", "m"),
     standardizer = Standardizer().fit(train)
     monitor = ChannelMaxESNMonitor(standardizer, K=K, cusum=True, seed=seed,
                                    name="esn_cusum_max_deployment",
-                                   channels=channels)
+                                   channels=channels, **esn_kwargs)
     monitor.fit(train)
 
     val_streams = []
