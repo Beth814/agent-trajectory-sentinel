@@ -161,7 +161,10 @@ class LineItem:
 class TaskSpec:
     """The per-task part: what a complete, correctly-totalled run looks like."""
 
-    line_items: tuple[LineItem, ...]
+    #: Priced lookups. Empty for a task that is not about money at all --
+    #: the money checks then have nothing to compute and stay silent, and the
+    #: spec still carries the domain-neutral parts below.
+    line_items: tuple[LineItem, ...] = ()
     #: tools that must be called but contribute no money (e.g. weather)
     required_tools: tuple[str, ...] = ()
     #: (tool, n) pairs for tasks that name how many times a tool must be used
@@ -255,6 +258,19 @@ def _events_per_step(steps: list[dict]) -> list[list[ToolCallEvent]]:
     `args_key` from the record instead of assuming them.
     """
     return [parse_step_events(s)[0] for s in steps]
+
+
+def evidence_tools(spec: TaskSpec) -> frozenset[str]:
+    """Tools whose successful use means the run was still gathering facts.
+
+    Domain-neutral: priced lookups are one KIND of evidence gathering, not the
+    definition of it, so a task with no money in it contributes its
+    `required_tools` and its counted tools and works the same way.
+    """
+    tools = {li.tool for li in spec.line_items}
+    tools |= set(spec.required_tools)
+    tools |= {name for name, _ in spec.required_counts}
+    return frozenset(tools)
 
 
 def required_coverage(steps: list[dict], spec: TaskSpec) -> list[Finding]:

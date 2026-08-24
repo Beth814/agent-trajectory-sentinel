@@ -41,14 +41,31 @@ class _FakeBackend:
                                  "content": r["content"]})
 
 
+#: Everything `compute_checkpoint_primary` is allowed to see. An explicit
+#: allowlist rather than a forbidden list, so a new parameter fails this test
+#: until someone states why it carries no ground truth:
+#:   steps, monitor, theta_b5, episode_from_trace  the run so far and the
+#:     frozen detector;
+#:   reference   grounding location/scale fitted on HEALTHY runs before
+#:     serving -- no label, onset or verdict enters it;
+#:   effects     per-tool declarations of what changes the world, written
+#:     with the tools and independent of any episode;
+#:   override    a switch for whether the content channel may alarm on its
+#:     own. A boolean chosen before serving -- it carries no episode data.
+_CHECKPOINT_INPUTS = {"steps", "monitor", "theta_b5", "episode_from_trace",
+                      "reference", "effects", "override"}
+
+
 def test_checkpoint_primary_never_accesses_tau_or_failure_class():
     """Structural, not conventional: these names are not parameters this
     function could read, under any call."""
     sig = inspect.signature(compute_checkpoint_primary)
     names = set(sig.parameters)
-    assert "tau" not in names
-    assert "failure_class" not in names
-    assert names == {"steps", "monitor", "theta_b5", "episode_from_trace"}
+    for forbidden in ("tau", "failure_class", "verdict", "success_fn",
+                      "success", "label", "verifier", "task"):
+        assert forbidden not in names, (
+            f"{forbidden!r} is reachable by the primary checkpoint rule")
+    assert names == _CHECKPOINT_INPUTS
 
 
 def test_oracle_and_primary_are_separate_functions_with_different_signatures():
@@ -182,3 +199,46 @@ def test_rebuild_history_prefix_then_continue_matches_full_reconstruction():
                                    "content": e.result})
 
     assert prefix.history == full.history
+
+
+def test_the_pre_fix_checkpoint_decisions_are_still_reproducible():
+    """The pre-fix repair result is a baseline, so its deterministic half must
+    stay executable.
+
+    A live retry cannot be reproduced bit for bit -- the model is stochastic --
+    but the checkpoint the shipped rule chooses is a pure function of the
+    trace and the frozen monitor. If that ever moved, the recorded outcomes
+    would no longer describe a run anyone can re-derive.
+    """
+    import pandas as pd
+
+    from derail.experiments.framework_monitor_freeze import load_frozen_monitor
+    from derail.intervene.real_tool_rollback import compute_checkpoint_oracle
+    from derail.telemetry.adapter import episode_from_trace
+
+    committed = pd.read_csv(REPO_ROOT / "results" / "tables" /
+                            "real_task_rollback_outcomes.csv")
+    corpus = REPO_ROOT / "traces" / "real_task_rollback"
+    manifest = {e["episode_id"]: e for e in
+                json.loads((corpus / "manifest.json").read_text("utf-8"))}
+    monitor, theta, _ = load_frozen_monitor()
+
+    checked = 0
+    for _, row in committed.iterrows():
+        entry = manifest[row["episode_id"]]
+        steps = [json.loads(line) for line in
+                 (corpus / entry["file"]).read_text("utf-8").splitlines()
+                 if line.strip()]
+        if row["arm"] == PRIMARY:
+            # No reference: the pre-fix rule, reachable from the same entry
+            # point so the baseline stays runnable from the current tree.
+            result = compute_checkpoint_primary(steps, monitor, theta,
+                                                episode_from_trace)
+        else:
+            result = compute_checkpoint_oracle(steps, tau=entry["tau"])
+        assert result.k == row["checkpoint_k"], (
+            f"{row['episode_id']} ({row['arm']}): checkpoint moved from "
+            f"{row['checkpoint_k']} to {result.k}; the pre-fix baseline is "
+            f"no longer reproducible")
+        checked += 1
+    assert checked >= 32, f"only {checked} committed rows re-derived"

@@ -43,7 +43,8 @@ from derail.experiments.demo import (DEMO_MAX_STEPS, DEMO_TOOL_SPECS,
                                      _make_demo_task, _step_record, _tool_bit)
 from derail.preconditions import error_shaped
 from derail.telemetry.events import make_tool_event, parse_step_events
-from derail.verify.checks import BOOKING_SPEC, Finding, TaskSpec, verify
+from derail.verify.checks import (BOOKING_SPEC, Finding, TaskSpec,
+                                  evidence_tools, verify)
 
 #: Rungs the offline repair comparison scores. `unstick` is deliberately
 #: absent -- iterating it here would produce empty groups that read as a
@@ -87,14 +88,21 @@ class Attempt:
 
 
 def rollback_step(steps: list[dict], spec: TaskSpec) -> int:
-    """Index to resume from: just after the last priced lookup.
+    """Index to resume from: just after the last successful evidence lookup.
 
     That is the last point at which the run was still gathering facts, before
     it combined them. Both failure families localize there — a missing lookup
     can still be made, and a bad combination is redone — so the study does not
     need a different checkpoint rule per family.
+
+    "Evidence" comes from `checks.evidence_tools`, which reads the spec's
+    declared tools rather than its priced line items, so this works on a task
+    with no money in it. The real-tool path uses the stronger rule in
+    `intervene.checkpoint`, which also asks whether the evidence is GROUNDED;
+    this one stays as the offline repair study's checkpoint so those published
+    numbers keep their meaning.
     """
-    priced = {li.tool for li in spec.line_items} | set(spec.required_tools)
+    priced = evidence_tools(spec)
     last = -1
     for i, s in enumerate(steps):
         # `parse_step_events`, not the text parser: where the collector
@@ -108,6 +116,13 @@ def rollback_step(steps: list[dict], spec: TaskSpec) -> int:
 
 def repair_message(rung: str, findings: list[Finding]) -> str | None:
     """The user-turn nudge appended at the checkpoint, or None.
+
+    The FINDINGS-driven ladder, for tasks that have a `verify()` layer. Its
+    rungs quote a consistency check, so they need one to exist. The real-tool
+    path has no such layer and uses `intervene.repair_policy`, whose rungs are
+    built from the monitor's own causal evidence instead. Two ladders because
+    they rest on different information, not because one is a copy of the
+    other.
 
     The leak guarantee is structural (see module docstring): there is no
     parameter here through which the task's ground truth could reach the
@@ -185,8 +200,25 @@ def rebuild_history(backend: OllamaBackend, task: str, steps: list[dict],
     arguments re-parsed out of a string, results cut to the display cap — and
     the retry then answers a slightly different question from the original run.
     """
+    rebuild_history_from(backend, task, steps, range(k))
+
+
+def rebuild_history_from(backend: OllamaBackend, task: str, steps: list[dict],
+                         indices) -> None:
+    """Rebuild the conversation from an explicit SUBSEQUENCE of the run.
+
+    Truncation is the common case and `rebuild_history` covers it. This exists
+    because truncation also throws away observations the fault never touched:
+    on the rollback corpus the verifier needs a Wikipedia lookup that happened
+    after a corrupted arXiv call, and resuming before it discarded a fact the
+    run already had. Passing the retained indices lets a caller drop the
+    untrustworthy turns and keep the rest.
+
+    Every message written here really occurred, in the order it occurred. This
+    replays a subsequence of the run; it never fabricates a turn.
+    """
     backend.reset(task)
-    for s in steps[:k]:
+    for s in [steps[i] for i in indices]:
         evs, reasoning = parse_step_events(s)
         msg: dict = {"role": "assistant"}
         if reasoning.strip():

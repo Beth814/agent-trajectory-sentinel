@@ -1,0 +1,75 @@
+[
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-60",
+    "requested_class": null,
+    "reason": "too short: T=2 < 4",
+    "facts": {
+      "T": 2
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-96",
+    "requested_class": null,
+    "reason": "task did not succeed: not a healthy episode",
+    "facts": {
+      "T": 7,
+      "success": false
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-97",
+    "requested_class": null,
+    "reason": "too short: T=2 < 4",
+    "facts": {
+      "T": 2
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-98",
+    "requested_class": null,
+    "reason": "too short: T=2 < 4",
+    "facts": {
+      "T": 2
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-99",
+    "requested_class": null,
+    "reason": "too short: T=2 < 4",
+    "facts": {
+      "T": 2
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-100",
+    "requested_class": null,
+    "reason": "too short: T=2 < 4",
+    "facts": {
+      "T": 2
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-101",
+    "requested_class": null,
+    "reason": "too short: T=2 < 4",
+    "facts": {
+      "T": 2
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-102",
+    "requested_class": null,
+    "reason": "too short: T=2 < 4",
+    "facts": {
+      "T": 2
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-103",
+    "requested_class": null,
+    "reason": "too short: T=2 < 4",
+    "facts": {
+      "T": 2
+    }
+  }
+]

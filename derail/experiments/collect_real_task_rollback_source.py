@@ -77,12 +77,21 @@ assert len(TASKS) == 2, "expected exactly 2 matching REAL_TASKS"
 CLASSES = ("tool_cascade", "looping", "context_corruption", "wrong_document")
 
 
-def _plan(n_healthy_per_task: int, n_per_class: int
-         ) -> list[tuple[str, str | None, int]]:
-    """[(task_name, failure_class_or_None, index)], healthy first."""
+def _plan(n_healthy_per_task: int, n_per_class: int,
+          healthy_start: int = 0) -> list[tuple[str, str | None, int]]:
+    """[(task_name, failure_class_or_None, index)], healthy first.
+
+    `healthy_start` shifts the healthy index range to [start, start+n), so a
+    later run can ADD episodes without renumbering the ones already
+    collected. The plan is task-major, so growing `n_healthy_per_task` alone
+    would move every second-task episode's position -- and position is what
+    the episode seed is derived from, so those episodes would be re-collected
+    as different runs. Topping up with a fresh index range and a fresh seed
+    base leaves existing episodes untouched and cannot collide with them.
+    """
     plan: list[tuple[str, str | None, int]] = []
     for task in TASKS:
-        for k in range(n_healthy_per_task):
+        for k in range(healthy_start, healthy_start + n_healthy_per_task):
             plan.append((task.name, None, k))
     for fc in CLASSES:
         for task in TASKS:
@@ -98,6 +107,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--out-dir", default=None)
     ap.add_argument("--n-healthy-per-task", type=int, default=2)
     ap.add_argument("--n-per-class", type=int, default=2)
+    ap.add_argument("--healthy-start", type=int, default=0,
+                    help="first healthy index, for adding to an existing "
+                         "corpus without renumbering it")
+    ap.add_argument("--seed-base", type=int, default=SEED_BASE,
+                    help="seed space for this run; use a fresh value when "
+                         "topping up so new episodes cannot repeat old ones")
     args = ap.parse_args(argv)
 
     try:
@@ -109,7 +124,8 @@ def main(argv: list[str] | None = None) -> None:
     out_dir = Path(args.out_dir) if args.out_dir else DEFAULT_OUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    plan = _plan(args.n_healthy_per_task, args.n_per_class)
+    plan = _plan(args.n_healthy_per_task, args.n_per_class,
+                 healthy_start=args.healthy_start)
     print(f"[collect-rollback-source] {len(plan)} episodes planned "
          f"({args.n_healthy_per_task}/task healthy + "
          f"{args.n_per_class}/task/class x {len(CLASSES)} classes)")
@@ -130,12 +146,12 @@ def main(argv: list[str] | None = None) -> None:
         task = task_by_name[task_name]
         kind = fc or "healthy"
         episode_id = f"rollback-{task_name}-{kind}-{k:02d}"
-        seed = SEED_BASE * 1000 + running_index
+        seed = args.seed_base * 1000 + running_index
 
         registry = build_registry(task.tools)
         injector = None
         if fc is not None:
-            tau_rng = rng_for(SEED_BASE, "e1b-tau", episode_id)
+            tau_rng = rng_for(args.seed_base, "e1b-tau", episode_id)
             tau = 2 + int(tau_rng.integers(0, 2))
             injector = ToolInjector(fc, tau=tau, seed=seed)
 
