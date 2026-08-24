@@ -266,6 +266,7 @@ class ESNEnsembleMonitor(OnlineMonitor):
         self._t = 0
         self._ewma = (0.0, 0.0, 0.0)
         self._cusum_state = (0.0, 0.0, 0.0)
+        self._last_raw = (0.0, 0.0, 0.0)
 
     def score_step(self, x_t: np.ndarray) -> float:
         """Consume x_t, emit the causal fused derailment score s_t.
@@ -279,6 +280,18 @@ class ESNEnsembleMonitor(OnlineMonitor):
             self.start_episode()
         u = self.standardizer.transform(np.asarray(x_t, dtype=float))[self._cols]
         return self._advance(u)[0]
+
+    @property
+    def last_raw_increment(self) -> float:
+        """This step's evidence BEFORE the CUSUM accumulates it.
+
+        The CUSUM's running state answers "how much has piled up"; this
+        answers "how surprising was this step", which a fusion layer needs to
+        compare channels without inheriting their accumulation. Zero during
+        washout, where no comparison is defined. Read-only: nothing here
+        changes what the monitor scores.
+        """
+        return self._last_raw[0]
 
     def score_episode_components(self, episode: Episode) -> dict[str, np.ndarray]:
         """Score an episode, returning all three causal EWMA-smoothed streams.
@@ -359,6 +372,7 @@ class ESNEnsembleMonitor(OnlineMonitor):
                 a * z_sup + (1.0 - a) * self._ewma[1],
                 a * z_dis + (1.0 - a) * self._ewma[2],
             )
+            self._last_raw = (fused_raw, z_sup, z_dis)
             k = self.cusum_k
             self._cusum_state = (
                 max(0.0, self._cusum_state[0] + fused_raw - k),
@@ -367,6 +381,7 @@ class ESNEnsembleMonitor(OnlineMonitor):
             )
             out = self._cusum_state if self.cusum else self._ewma
         else:
+            self._last_raw = (0.0, 0.0, 0.0)
             out = (0.0, 0.0, 0.0)
 
         lk = self.leak_rate

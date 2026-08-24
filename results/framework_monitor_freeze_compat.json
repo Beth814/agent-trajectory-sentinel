@@ -25,6 +25,9 @@
   "compatible_dependency_blob_hashes": {
     "derail/monitor/deployment_calibration.py": [
       "750798d3a7bc5087c7d63906fd09b1b852b93071"
+    ],
+    "derail/monitor/esn.py": [
+      "5fecd86d253f0540069311ae0220d5f10e73fa24"
     ]
   },
   "reconstruction_digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
@@ -39,6 +42,13 @@
       "digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
       "added": [
         "derail/monitor/deployment_calibration.py -> 750798d3a7bc"
+      ]
+    },
+    {
+      "commit": "404bee6982b125006de8c61468a054dcab9e151e",
+      "digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
+      "added": [
+        "derail/monitor/esn.py -> 5fecd86d253f"
       ]
     }
   ]
