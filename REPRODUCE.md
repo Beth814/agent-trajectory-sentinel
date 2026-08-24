@@ -332,7 +332,14 @@ py -m devtools.artifact_manifest --check          # SHA-256 over every committed
 py -m devtools.claims_ledger --check              # every headline number vs its artifact
 py -m devtools.data_card --check                  # data card vs the committed corpora
 py -m devtools.social_card --check                # link-preview card vs its generator
+py -m devtools.baseline_lock --check              # pre-fix baseline still reproduces
 ```
+
+`baseline_lock --check` re-runs the frozen pre-fix monitor and compares its
+own per-step scores against a recorded digest, so the control the framework
+results are read against stays executable rather than merely hashed. A
+dependency file that has changed since the baseline is refused until
+`--prove` demonstrates it reconstructs the identical monitor.
 
 `social_card --check` compares bytes and so only holds on the machine that drew
 the card; text rasterisation varies by font file and freetype version. The

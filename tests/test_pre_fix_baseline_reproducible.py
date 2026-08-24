@@ -1,0 +1,156 @@
+"""Is the pre-fix framework baseline still executable from this tree?
+
+Not "is it recorded", "is it hashed", or "did anyone promise not to touch
+it" -- executable. These tests reconstruct the frozen monitor, re-run both
+published arms against the committed corpora, and compare what comes out to
+what was published: the zero-shot report and, from the calibrated arm, the
+0.625 / 0.000 LangGraph and 0.913 / 0.125 AutoGen numbers.
+
+The point is the control. Every later E1 result is read against this
+baseline, so a version of it that quietly ran new detector logic would make
+the comparison meaningless in exactly the way that is hardest to notice.
+"""
+from __future__ import annotations
+
+import json
+
+import pandas as pd
+import pytest
+
+from devtools import baseline_lock
+from derail.experiments import framework_monitor_freeze as freeze_module
+from derail.experiments.framework_monitor_freeze import load_frozen_monitor
+
+REPO_ROOT = baseline_lock.REPO_ROOT
+
+
+def _lock() -> dict:
+    return json.loads(baseline_lock.LOCK_PATH.read_text("utf-8"))
+
+
+@pytest.mark.slow
+def test_the_pre_fix_baseline_still_reconstructs_its_own_scores():
+    """The lock's own gate: dependencies pinned or proven, digest reproduced."""
+    assert baseline_lock.check(_lock()) == []
+
+
+def test_the_frozen_monitor_is_built_from_its_artifact_not_from_defaults():
+    monitor, theta, artifact = load_frozen_monitor()
+    assert theta == artifact["theta_b5"]
+    assert monitor.channels == tuple(artifact["channels"])
+    assert len(monitor.subs) == len(artifact["channels"])
+    outer = artifact["outer_monitor_config"]
+    for sub in monitor.subs:
+        assert sub.K == outer["K"]
+        assert sub.cusum is outer["cusum"]
+        for name, value in artifact["inner_esn_hyperparameters"].items():
+            assert getattr(sub, name) == value, (
+                f"{name} came from the current default rather than the "
+                f"freeze artifact")
+
+
+def test_the_frozen_split_is_the_one_the_artifact_records():
+    _, _, artifact = load_frozen_monitor()
+    train = artifact["training_episode_ids"]
+    val = artifact["calibration_episode_ids"]
+    test = artifact["held_out_test_episode_ids"]
+    assert len(train) == artifact["training_episode_count"]
+    assert len(val) == artifact["calibration_episode_count"]
+    assert not (set(train) & set(val)), "train and calibration overlap"
+    assert not (set(train) & set(test)), "train and held-out test overlap"
+    assert not (set(val) & set(test)), "calibration and held-out test overlap"
+    assert freeze_module._hash_ids(train) == artifact["training_input_hash"]
+    assert freeze_module._hash_ids(val) == artifact["calibration_input_hash"]
+
+
+def test_an_artifact_hyperparameter_wins_over_the_current_default(tmp_path):
+    """Mutation check on the pinning itself.
+
+    A copy of the freeze with one hyperparameter changed must produce a
+    monitor carrying THAT value. If the reconstruction were still reading
+    defaults, this would silently pass through the shipped 0.3 instead.
+    """
+    artifact = json.loads(freeze_module.OUT_PATH.read_text("utf-8"))
+    assert artifact["inner_esn_hyperparameters"]["leak_rate"] != 0.7
+    artifact["inner_esn_hyperparameters"]["leak_rate"] = 0.7
+    path = tmp_path / "mutated_freeze.json"
+    path.write_text(json.dumps(artifact), "utf-8")
+    monitor, _, _ = load_frozen_monitor(path)
+    assert all(sub.leak_rate == 0.7 for sub in monitor.subs)
+
+
+def test_a_lock_recorded_against_a_different_freeze_is_refused(tmp_path,
+                                                               monkeypatch):
+    """No silent fallback: a stale allowlist must not wave anything through."""
+    stale = tmp_path / "compat.json"
+    stale.write_text(json.dumps({
+        "freeze_sha256": "0" * 64,
+        "compatible_dependency_blob_hashes": {"derail/common.py": ["cafe"]},
+    }), "utf-8")
+    monkeypatch.setattr(freeze_module, "COMPAT_PATH", stale)
+    with pytest.raises(RuntimeError, match="recorded against a different"):
+        freeze_module._proven_compatible_blobs(freeze_module.OUT_PATH)
+
+
+def test_proving_compatibility_is_refused_when_behaviour_changed(monkeypatch):
+    monkeypatch.setattr(baseline_lock, "reconstruction_digest",
+                        lambda: "f" * 64)
+    monkeypatch.setattr(baseline_lock, "_dirty", lambda paths: [])
+    with pytest.raises(SystemExit, match="reconstructs a different monitor"):
+        baseline_lock.prove(_lock())
+
+
+def test_an_uncommitted_dependency_edit_is_refused(monkeypatch):
+    monkeypatch.setattr(baseline_lock, "_dirty",
+                        lambda paths: ["derail/monitor/esn.py"])
+    problems = baseline_lock.check(_lock())
+    assert any("uncommitted edits" in p for p in problems)
+
+
+@pytest.mark.slow
+def test_the_zero_shot_arm_reproduces_what_was_published(tmp_path, monkeypatch):
+    from derail.experiments import run_framework_real_tool_analysis as study
+
+    monkeypatch.setattr(study, "OUT_CSV", tmp_path / "alarms.csv")
+    monkeypatch.setattr(study, "OUT_REPORT", tmp_path / "report.md")
+    study.main()
+
+    published = REPO_ROOT / "results" / "framework_real_tool_report.md"
+    assert (tmp_path / "report.md").read_text("utf-8") == \
+        published.read_text("utf-8")
+    pd.testing.assert_frame_equal(
+        pd.read_csv(tmp_path / "alarms.csv"),
+        pd.read_csv(REPO_ROOT / "results" / "tables" /
+                    "framework_real_tool_alarms.csv"))
+
+
+@pytest.mark.slow
+@pytest.mark.filterwarnings("ignore:calibrating on")
+def test_the_calibrated_arm_reproduces_the_published_rates(tmp_path,
+                                                           monkeypatch):
+    from derail.experiments import run_framework_generalized_monitor_eval \
+        as study
+
+    monkeypatch.setattr(study, "OUT_CSV", tmp_path / "alarms.csv")
+    monkeypatch.setattr(study, "OUT_SUMMARY", tmp_path / "summary.csv")
+    monkeypatch.setattr(study, "OUT_REPORT", tmp_path / "report.md")
+    study.main()
+
+    published = pd.read_csv(REPO_ROOT / "results" / "tables" /
+                            "framework_generalized_monitor_summary.csv")
+    pd.testing.assert_frame_equal(pd.read_csv(tmp_path / "summary.csv"),
+                                  published)
+    pd.testing.assert_frame_equal(
+        pd.read_csv(tmp_path / "alarms.csv"),
+        pd.read_csv(REPO_ROOT / "results" / "tables" /
+                    "framework_generalized_monitor_alarms.csv"))
+
+    # The two numbers the whole E1 comparison is read against, asserted by
+    # value so a reader of this test can see what is being protected.
+    calibrated = published[published["monitor"] == "calibrated"].set_index(
+        "framework")
+    assert calibrated.loc["langgraph", "detection_rate"] == pytest.approx(0.625)
+    assert calibrated.loc["langgraph", "healthy_fa_rate"] == pytest.approx(0.0)
+    assert calibrated.loc["autogen", "detection_rate"] == \
+        pytest.approx(0.9130434782608695)
+    assert calibrated.loc["autogen", "healthy_fa_rate"] == pytest.approx(0.125)

@@ -145,6 +145,7 @@
    "tests/test_language_and_cost_units.py": "0c6dc0cf2f41f11f2ef8fc65764c5a0c71f793003d976a2ec32f892d9e15f8ee",
    "tests/test_module_selftests.py": "0c8c899b49ef613d6ee419e3df8e2ad8a340e3b17ed13205d0d4b98634e0e9d6",
    "tests/test_monitor_internals.py": "5a726f15b6389a1550ef575de92240828c387e62427ae2211d9202be254d5399",
+   "tests/test_pre_fix_baseline_reproducible.py": "417f338deddaec8a49ce5e5646f26cde1ac82fce21cd9c712790017edf9fc534",
    "tests/test_provenance_infrastructure.py": "ee8cfed4e29d9e7bd01e3561eabbc57a03b46efae7a8bcdc30fd667958ba8990",
    "tests/test_reader_preconditions.py": "79d5e5be2f68379285c6b58ca5b12edab01706e7794f4a4183ce949ca48fcc16",
    "tests/test_real_task_rollback.py": "c7cafda335cf21a42152ca51735d1e4cd9ccf5c6366a538d11004241843d8c1f",
@@ -181,6 +182,7 @@
    "results/framework_generalized_monitor_report.md": "fb80779eb7389e6a97689d95183b98b16371f08ff25f460310cdce0bf2c4db34",
    "results/framework_miss_forensics.md": "4a4f06a4f92b3ca6eb0acd1d8b28e0dc64e5250b7813a9c8aeadd4bef254f076",
    "results/framework_monitor_freeze.json": "0b0b25bf9f9598085a7eb09e993113d0877394150e86bdc74f203270a3a583d8",
+   "results/framework_monitor_freeze_compat.json": "0c6c3cfac87b369eb2e500c11fed12aecee12ecb11f230693be173ac04ff14e0",
    "results/framework_real_tool_report.md": "6049d9fb7caebe86ea534944a6c48d8f8bebc48eee3b4f0332657b1cfbd9aab1",
    "results/horizon_report.md": "2cccaa3648cdc8ecbf640b4b24d7612b630ec3742a5a206d4b69f3791b07bf9e",
    "results/hybrid_report.md": "74693e8476db074704c978c5ac4356a7ae2e6cbb5e57031026159cebc0493f0c",
@@ -12252,7 +12254,7 @@
    "traces/real_task_rollback/rollback-multi_city_weather-wrong_document-01.jsonl": "016e3d96970e619d7bbefed76acb91915d549c6467d270f1a29be1c02159f401"
   },
   "docs": {
-   "CHECKSUMS.md": "47eca8823ceafe0239661ae72791cc2096f8ad34ca57065e4cb1bffbce596a10",
+   "CHECKSUMS.md": "96c4fe9b23cb8b431344112014129f9aa1f2dcf172dbec27f32b8c6c2094873f",
    "CLAIMS.md": "b8f7f2705f0fa82c9449b14eac5fd16766dbc6076c2c4ff39b2b30994c93884f",
    "CONTRIBUTIONS.md": "f1ace0e4b61b0626265f17671da8bb64f664e6dce29c0fb9e86b7e575428e144",
    "DATA_CARD.md": "20006a547dd2fe6e3d1d58a669e1b2a03c357f134eae089fffd0f49d79c4543f",
@@ -12260,7 +12262,7 @@
    "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
    "NOTICE": "4d84505c8ad61c5e2ab879898d2408285ebe3ecaa1a79e8b9f917320811fc0a5",
    "README.md": "28984c1cfef2eb0d10e226f60049c2e30f98b79a12475b2c9f3f7e3895a3f3d3",
-   "REPRODUCE.md": "73287d7cd9ad693e95ffba19f187db4575faea06b51b3e0adae860087e639b6a",
+   "REPRODUCE.md": "6269acbd3ef6e6b77d00c6143b3aa49aeb60b13787c8633bff5540c317946731",
    "USER_GUIDE.md": "d05935732e554d104375ba3142f44c2c9e29fdad9d1f748c6da8c84e2b5798e2",
    "requirements-core.lock.txt": "3955fb616b7dffbb0f5b2de35ab2f229e362274187a86d5e4e5dc33eb13ee9bb",
    "requirements.lock.txt": "3bf6b8cc39209fff488e03a3ba1864f21ac7fa5130030caf63b0ad6e7a5223aa",
@@ -12268,5 +12270,5 @@
   }
  },
  "note": "",
- "file_count": 12258
+ "file_count": 12260
 }

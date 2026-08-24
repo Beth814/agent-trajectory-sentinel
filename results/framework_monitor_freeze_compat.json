@@ -1,0 +1,32 @@
+{
+  "purpose": "Keeps the pre-fix framework baseline executable and unambiguous while the detector evolves. The freeze artifact itself is immutable; this file records what has been proven equivalent to it.",
+  "monitor_version": "esn_cusum_max[e,m]/v1-prefix",
+  "freeze_artifact": "results/framework_monitor_freeze.json",
+  "freeze_sha256": "0b0b25bf9f9598085a7eb09e993113d0877394150e86bdc74f203270a3a583d8",
+  "published_artifacts": [
+    "results/framework_real_tool_report.md",
+    "results/framework_generalized_monitor_report.md",
+    "results/tables/framework_generalized_monitor_summary.csv",
+    "results/tables/framework_generalized_monitor_alarms.csv",
+    "results/tables/framework_real_tool_alarms.csv"
+  ],
+  "baseline_commit": "3220047395a382a669ba32d48f92d0efaf3a837a",
+  "dependency_blob_hashes": {
+    "derail/monitor/esn.py": "d9a27e601ffc160f05e31c36325fa4cc3ae52aea",
+    "derail/common.py": "4042e39f5084d70513a7faae84f7f5a51c96f3bc",
+    "derail/telemetry/adapter.py": "b40a7da4508f2174520fae1bf8bbfb2b6d99cadb",
+    "derail/telemetry/events.py": "5ac69e135299add00025ccbff1c0fea72680680b",
+    "derail/evaluation/metrics.py": "13878db524154198040f7079314fda43fb3b450e",
+    "derail/monitor/deployment_calibration.py": "4c0d155fbc487b33fb7eb330b743dd4435603a32",
+    "derail/experiments/framework_monitor_freeze.py": "a7a7f789b78c53cf4bc46be48a383ba9aca78e8c",
+    "derail/experiments/run_framework_real_tool_analysis.py": "e64420fb2a91d7ecbe422d1d963e53e9a1bc533b",
+    "derail/experiments/run_framework_generalized_monitor_eval.py": "472df6829a2e82bb876d243c6f55cf4929bc493b"
+  },
+  "compatible_dependency_blob_hashes": {},
+  "reconstruction_digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
+  "digest_corpora": [
+    "langgraph7b_real",
+    "autogen7b_real"
+  ],
+  "digest_decimals": 6
+}
