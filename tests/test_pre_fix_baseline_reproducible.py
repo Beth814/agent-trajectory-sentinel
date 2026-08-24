@@ -100,11 +100,23 @@ def test_proving_compatibility_is_refused_when_behaviour_changed(monkeypatch):
         baseline_lock.prove(_lock())
 
 
-def test_an_uncommitted_dependency_edit_is_refused(monkeypatch):
+def test_the_first_changed_file_is_not_lost_when_parsing_git(monkeypatch):
+    """Regression: the helper that runs git strips its output, which ate the
+    leading status column of the FIRST line and turned an unstaged edit into
+    a clean tree. The detection must not depend on leading whitespace."""
+    monkeypatch.setattr(baseline_lock, "_git",
+                        lambda *args: "derail/monitor/esn.py\n"
+                                      "derail/common.py")
+    assert baseline_lock._dirty(("derail/monitor/esn.py",
+                                 "derail/common.py")) == [
+        "derail/common.py", "derail/monitor/esn.py"]
+
+
+def test_an_unstaged_dependency_edit_is_refused(monkeypatch):
     monkeypatch.setattr(baseline_lock, "_dirty",
                         lambda paths: ["derail/monitor/esn.py"])
     problems = baseline_lock.check(_lock())
-    assert any("uncommitted edits" in p for p in problems)
+    assert any("unstaged edits" in p for p in problems)
 
 
 @pytest.mark.slow

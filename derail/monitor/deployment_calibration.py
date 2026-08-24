@@ -25,11 +25,32 @@ from derail.common import Standardizer, rng_for
 from derail.evaluation.metrics import pick_threshold
 from derail.monitor.esn import ChannelMaxESNMonitor
 
-#: Floors read off a native-harness learning curve: at 12 healthy episodes the
-#: picked threshold moves 100x across seeds and FA runs at 0.30; 30 reaches
-#: 0.06, 80 holds at or below 0.03. Both are arguments, not fixed policy.
-_MIN_HEALTHY = 30
-_RECOMMENDED_HEALTHY = 80
+#: Floors measured on a committed learning curve, not recalled from one:
+#: `derail/experiments/calibration_sample_size.py` ->
+#: `results/calibration_sample_size.md`, 322 native healthy episodes, a
+#: single untouched 100-episode test set, fit and calibration folds varied
+#: independently over 10 replicates.
+#:
+#: They are stated PER FOLD because the study shows the two do not move
+#: together. A small calibration fold misses the budget: at 10 calibration
+#: episodes only 20-40% of replicates land at or under 5% realized false
+#: alarms, whatever the fit size. A small FIT fold instead produces runaway
+#: thresholds -- at 20 fit episodes the 90th-percentile threshold reaches 6e6
+#: and one draw picked 9.4e7, which alarms on nothing and reports a flattering
+#: zero. Only fit 140 / calibration 80 held the budget in every replicate
+#: (mean realized 0.029, worst 0.05).
+#:
+#: The single-pool floor below is what those imply under this module's
+#: 60/20/20 split, and the previous pair (30 / 80) is superseded: a total of
+#: 80 gives a 16-episode calibration fold, which the curve puts between the
+#: two worst columns it measured, not at "0.03 or below".
+_MIN_FIT = 40
+_MIN_CALIBRATION = 20
+_RECOMMENDED_FIT = 140
+_RECOMMENDED_CALIBRATION = 80
+_MIN_HEALTHY = int(round((_MIN_FIT + _MIN_CALIBRATION) / 0.8))
+_RECOMMENDED_HEALTHY = int(round((_RECOMMENDED_FIT + _RECOMMENDED_CALIBRATION)
+                                 / 0.8))
 
 
 @dataclass
@@ -76,22 +97,42 @@ def calibrate(healthy_episodes: list, *, channels: tuple[str, ...] = ("e", "m"),
     if len(healthy_episodes) < min_healthy:
         raise ValueError(
             f"calibrate needs >= {min_healthy} healthy episodes, got "
-            f"{len(healthy_episodes)}: the threshold is not identifiable below "
-            f"that")
+            f"{len(healthy_episodes)}: below that the 60/20/20 split leaves "
+            f"fewer than {_MIN_FIT} to fit on or {_MIN_CALIBRATION} to pick a "
+            f"threshold from, and the measured curve does not hold the budget "
+            f"there")
     if len(healthy_episodes) < warn_below:
         warnings.warn(
             f"calibrating on {len(healthy_episodes)} healthy episodes; "
-            f"{warn_below}+ is where FA holds at or below 0.03", stacklevel=2)
+            f"{warn_below}+ is where every measured replicate held the "
+            f"false-alarm budget (see results/calibration_sample_size.md)",
+            stacklevel=2)
     train, val, test = _split_60_20_20(healthy_episodes, seed)
+    return calibrate_from_folds(train, val, test_episodes=test,
+                                channels=channels, fa_budget=fa_budget, K=K,
+                                seed=seed, **esn_kwargs)
 
-    standardizer = Standardizer().fit(train)
+
+def calibrate_from_folds(fit_episodes: list, cal_episodes: list, *,
+                         test_episodes: list | None = None,
+                         channels: tuple[str, ...] = ("e", "m"),
+                         fa_budget: float = 0.05, K: int = 8, seed: int = 0,
+                         **esn_kwargs) -> DeploymentCalibration:
+    """`calibrate` with the folds supplied rather than split from one pool.
+
+    Same fit, same threshold rule, same class -- the only difference is who
+    chose the folds. A study that needs to vary the fit population and the
+    threshold population independently goes through here instead of
+    reimplementing the procedure it is measuring.
+    """
+    standardizer = Standardizer().fit(fit_episodes)
     monitor = ChannelMaxESNMonitor(standardizer, K=K, cusum=True, seed=seed,
                                    name="esn_cusum_max_deployment",
                                    channels=channels, **esn_kwargs)
-    monitor.fit(train)
+    monitor.fit(fit_episodes)
 
     val_streams = []
-    for ep in val:
+    for ep in cal_episodes:
         monitor.start_episode()
         val_streams.append(np.array([monitor.score_step(ep.X[t])
                                      for t in range(ep.X.shape[0])]))
@@ -99,14 +140,14 @@ def calibrate(healthy_episodes: list, *, channels: tuple[str, ...] = ("e", "m"),
                                  warn_infeasible=False))
     if not np.isfinite(theta) or theta <= 0.0:
         raise ValueError(
-            f"degenerate threshold ({theta!r}) from {len(val)} validation "
-            f"episodes: it would alarm on everything")
+            f"degenerate threshold ({theta!r}) from {len(cal_episodes)} "
+            f"validation episodes: it would alarm on everything")
 
     return DeploymentCalibration(
         monitor=monitor, standardizer=standardizer, theta=theta,
-        train_ids=[ep.episode_id for ep in train],
-        val_ids=[ep.episode_id for ep in val],
-        test_ids=[ep.episode_id for ep in test])
+        train_ids=[ep.episode_id for ep in fit_episodes],
+        val_ids=[ep.episode_id for ep in cal_episodes],
+        test_ids=[ep.episode_id for ep in (test_episodes or [])])
 
 
 if __name__ == "__main__":

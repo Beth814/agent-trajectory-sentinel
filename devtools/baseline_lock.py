@@ -81,19 +81,28 @@ def _git(*args: str) -> str:
 
 
 def _blob(path: str) -> str:
-    return _git("rev-parse", f"HEAD:{path}")
+    """Blob hash of the STAGED content -- what the next commit would record.
+
+    The index rather than HEAD, so a proof can be taken on exactly the change
+    about to be committed. For an unmodified file the two are the same, so
+    this only differs where it matters.
+    """
+    return _git("rev-parse", f":{path}")
 
 
 def _dirty(paths: tuple[str, ...]) -> list[str]:
-    """Dependency files with uncommitted edits.
+    """Dependency files whose working tree differs from what is staged.
 
-    Blob hashes name what is COMMITTED. Without this a working-tree edit to a
-    dependency would run against the lock while the lock still described the
-    committed revision -- the check would pass on code nobody has recorded.
+    Blob hashes name staged content. An unstaged edit would therefore be
+    invisible to the hash while still being what the interpreter imports, so
+    a proof taken over it would attest to code that was never recorded.
     """
-    out = _git("status", "--porcelain", "--", *paths)
-    return sorted({line[3:].strip().strip('"') for line in out.splitlines()
-                   if line.strip()})
+    # `git diff --name-only` is exactly "worktree differs from index". The
+    # porcelain status columns are not parsed here on purpose: their leading
+    # space is load-bearing, and any helper that strips output silently turns
+    # an unstaged edit into a clean one.
+    out = _git("diff", "--name-only", "--", *paths)
+    return sorted(line.strip() for line in out.splitlines() if line.strip())
 
 
 def _sha256_file(path: Path) -> str:
@@ -136,8 +145,8 @@ def build_lock() -> dict:
     dirty = _dirty(DEPENDENCY_FILES)
     if dirty:
         raise SystemExit(
-            f"[baseline-lock] REFUSED: {', '.join(dirty)} have uncommitted "
-            f"edits. A lock records committed blob hashes, so writing one now "
+            f"[baseline-lock] REFUSED: {', '.join(dirty)} have unstaged "
+            f"edits. A lock records staged blob hashes, so writing one now "
             f"would pin revisions that are not what this tree runs.")
     return {
         "purpose": "Keeps the pre-fix framework baseline executable and "
@@ -166,7 +175,7 @@ def check(lock: dict) -> list[str]:
             f"freeze is meant to be immutable")
     for path in _dirty(DEPENDENCY_FILES):
         problems.append(
-            f"{path} has uncommitted edits, so no blob hash describes what "
+            f"{path} has unstaged edits, so no blob hash describes what "
             f"this tree would actually run")
     allowed = lock.get("compatible_dependency_blob_hashes", {})
     for path, pinned in lock["dependency_blob_hashes"].items():
@@ -193,8 +202,8 @@ def prove(lock: dict) -> dict:
     dirty = _dirty(DEPENDENCY_FILES)
     if dirty:
         raise SystemExit(
-            f"[baseline-lock] REFUSED: {', '.join(dirty)} have uncommitted "
-            f"edits; commit them before proving, or the proof records a blob "
+            f"[baseline-lock] REFUSED: {', '.join(dirty)} have unstaged "
+            f"edits; stage them before proving, or the proof records a blob "
             f"hash for code that was never run.")
     digest = reconstruction_digest()
     if digest != lock["reconstruction_digest"]:

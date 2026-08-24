@@ -10,9 +10,16 @@ import numpy as np
 import pytest
 
 from derail.experiments import run_framework_generalized_monitor_eval as ev
+from derail.monitor.deployment_calibration import _MIN_HEALTHY
 
 
-def _write_corpus(corpus_dir, n_healthy=40, n_injected=8):
+#: At or above `calibrate`'s measured floor, so the smoke test exercises the
+#: real admission path instead of tripping it. The floor is imported rather
+#: than copied: when the learning curve moves it, this moves with it.
+_SMOKE_HEALTHY = _MIN_HEALTHY
+
+
+def _write_corpus(corpus_dir, n_healthy=_SMOKE_HEALTHY, n_injected=8):
     corpus_dir.mkdir(parents=True)
     manifest = []
     rng = np.random.default_rng(0)

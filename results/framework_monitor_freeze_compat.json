@@ -22,11 +22,24 @@
     "derail/experiments/run_framework_real_tool_analysis.py": "e64420fb2a91d7ecbe422d1d963e53e9a1bc533b",
     "derail/experiments/run_framework_generalized_monitor_eval.py": "472df6829a2e82bb876d243c6f55cf4929bc493b"
   },
-  "compatible_dependency_blob_hashes": {},
+  "compatible_dependency_blob_hashes": {
+    "derail/monitor/deployment_calibration.py": [
+      "750798d3a7bc5087c7d63906fd09b1b852b93071"
+    ]
+  },
   "reconstruction_digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
   "digest_corpora": [
     "langgraph7b_real",
     "autogen7b_real"
   ],
-  "digest_decimals": 6
+  "digest_decimals": 6,
+  "proofs": [
+    {
+      "commit": "0d5cb2e8bdeefc0d2a098138a72877028bd9925a",
+      "digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
+      "added": [
+        "derail/monitor/deployment_calibration.py -> 750798d3a7bc"
+      ]
+    }
+  ]
 }
