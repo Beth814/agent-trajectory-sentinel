@@ -29,6 +29,7 @@ SUB_KEYS = {
     "real_task_rollback_outcomes.csv": ("arm",),
     "rollback_failure_rootcause.csv": ("arm",),
     "framework_miss_forensics_steps.csv": ("t",),
+    "short_horizon_per_episode.csv": ("washout",),
 }
 
 #: Tables that predate the dataset column and are not episode-level despite

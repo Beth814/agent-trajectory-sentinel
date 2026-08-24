@@ -23,7 +23,7 @@
    "derail/experiments/demo.py": "96baaded0b0141b42d39b340c2dcad5f3e4f373cd2df413357ac8ee84d1e2c71",
    "derail/experiments/diagnose_framework_misses.py": "abc057fdcb33ccdad0a0627b5f21e4d4db9c5a1909bb7c518b10b167cdeb4c98",
    "derail/experiments/diagnose_rollback_failures.py": "09f0d20eca6e4317559cddf4dbcbc0c2b439ed0cceef25d5230e0a9596da6525",
-   "derail/experiments/diagnose_short_horizon.py": "f270cd456de42e16f416fd3a26020ebab7c9efcb6dbe63d123b9c3dcb017a3e5",
+   "derail/experiments/diagnose_short_horizon.py": "b38959f01d7ae990219c5f72101b595860d62eeb9239802cda009001efd81008",
    "derail/experiments/esn_ablation.py": "5a2872038a8fab3b1393cfe483497f634f43e526812cc65d42b693160d492a4e",
    "derail/experiments/esn_capacity_scaling.py": "144126dd6908fa947f9a25835d165609b23c7f66315652d42f9a1fa9668e747f",
    "derail/experiments/evaluate_hmte.py": "ba646b6ebc47152570984447713d6e528d160af3fefed23183dd95e9042661d1",
@@ -132,7 +132,7 @@
    "tests/test_claim_denominators.py": "bc42cacc3f6de3cc43a7e78eaa1c45237b8c63950bafca9cee6562cdf2b66158",
    "tests/test_claim_tolerance.py": "9da1172a127dbcbb4b2255904d4134c8865044f52054c967529a1539fa014bfe",
    "tests/test_collection_validity.py": "d8ecdf9e35cf174c71dafba47efdb02062434e89d436a35ef854c980a909e241",
-   "tests/test_cross_study_keys.py": "943c3d8edc8571c04a07a8e2db5208457ec89613b872bd5bf81caf7d1f48627b",
+   "tests/test_cross_study_keys.py": "6ff8b010abc20ff28b14e596de34f8829096c762a978d78140835b411604615c",
    "tests/test_deployment_calibration.py": "7eb3acc2567de0a8f3d6f869280bb0886975933f07afb58fb1dd4823f32f55ad",
    "tests/test_evaluation_validity.py": "cd6ff1e5c6342ff771a64fc9234ffa5aad7355cc4011781b5bb7666e524b942b",
    "tests/test_framework_generalized_monitor_eval.py": "199c6dc0b62fc648738f2941425c72e1650bc674854b1bcb40fb0eaf682c990e",
@@ -225,7 +225,7 @@
    "results/seed7/tables/h3_calibration.csv": "c9b906055f3507a3312ab5186e733e64d4c51480d1212f8cd6b2d36350abd425",
    "results/seed7/tables/h3_escalation.csv": "2ab7a1293c5da24f7b6abe4485b7244205d3e62eacb29acf5b8fa55acab282e4",
    "results/seed7/tables/h3_reliability.csv": "00c3840565e6fee01a16727956a67c79e98a3ccd0349c7bf70526a63739ec012",
-   "results/short_horizon_diagnosis.md": "8911f79ec54359a87e1a028aef303ff3baf06e9bf8f9417db2b84325db5842b7",
+   "results/short_horizon_diagnosis.md": "f5df80e507985fa2685c916aca1bcac4ac855863a2432a85c4b68b93384b2e70",
    "results/tables/UNREPRODUCIBLE.md": "5b2c437e86ed90e3bf4c395b77488ed37587f7f04a8b31e0b225c1cfd5bca6bc",
    "results/tables/adversarial_evasion.csv": "203be56b64d138d2be5d619ce6434f0199da63623083a027e0832e744e76402e",
    "results/tables/aftraj_benchmark.csv": "fb24817936c54d63011bd8164307d74fb0841296bd4d8c404b56df7a78f1035f",
@@ -401,6 +401,7 @@
    "results/tables/runtime.csv": "5c8fd80575141ad7522992fc2797f85f9eb46bb6c5d6e2293147abce258eea67",
    "results/tables/seq_data_scaling.csv": "3dca184013cbe6b3a9bb63f98aedbd2e558fca015a6660beb008b885b0286787",
    "results/tables/serving_temperature.csv": "bc9a807507060d63e5cac91feec9a047a04dc0fcdb3a563c3650896a48e342eb",
+   "results/tables/short_horizon_per_episode.csv": "0ec5de7571ed0bda04ab9027c979e99d3d38bd4983e6cc1ec6d3a9f240339e7f",
    "results/tables/short_horizon_sweep.csv": "93415375f8f77eb9fb7c2c1a0bc40f078401d23df7da5aec1dfdc37250c7b13c",
    "results/tables/tamper_check.csv": "9e4e013bc28e65c4aebb24c5b218715f4c9382f6fdd33da6b7d608adb98c680c",
    "results/tables/telemetry_dependence.csv": "ca8dab558cb92a2cf4ba83a1a22d8549ab0f66da5d576664cb37106de5c7783a",
@@ -12250,7 +12251,7 @@
    "traces/real_task_rollback/rollback-multi_city_weather-wrong_document-01.jsonl": "016e3d96970e619d7bbefed76acb91915d549c6467d270f1a29be1c02159f401"
   },
   "docs": {
-   "CHECKSUMS.md": "b53d720b44748acfc6562abcccb17772710de2a99197878210946d5cef40481c",
+   "CHECKSUMS.md": "9e87aea814c4adf909d280b9c4b060fe585e821201e8b84d68a243c451710f57",
    "CLAIMS.md": "b8f7f2705f0fa82c9449b14eac5fd16766dbc6076c2c4ff39b2b30994c93884f",
    "CONTRIBUTIONS.md": "f1ace0e4b61b0626265f17671da8bb64f664e6dce29c0fb9e86b7e575428e144",
    "DATA_CARD.md": "20006a547dd2fe6e3d1d58a669e1b2a03c357f134eae089fffd0f49d79c4543f",
@@ -12266,5 +12267,5 @@
   }
  },
  "note": "",
- "file_count": 12256
+ "file_count": 12257
 }
