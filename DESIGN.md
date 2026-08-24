@@ -1320,7 +1320,9 @@ study measured; this module removes it for everything after the first.
 **Contract.**
 
 - `ServingConfig.fingerprint()` covers model, temperature, serving prompt, tool
-  roster and telemetry width. Tool ORDER is not identity; the prompt is hashed
+  roster, telemetry width and the monitor's own shape - reservoir size, K,
+  channel set - because a threshold is a property of the scorer as much as of
+  the system scored. Tool ORDER is not identity; the prompt is hashed
   rather than stored. `RollingBaseline.reconfigure` **retires** the null on a
   changed fingerprint rather than ageing it out: a null from another
   configuration makes the threshold confidently wrong, which is worse than

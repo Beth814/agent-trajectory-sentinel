@@ -387,8 +387,9 @@ Recorded here because each one silently invalidates a calibration if it moves.
   tables are unaffected.
 - **Telemetry width.** v1 (agent text and tool args) through v4 (60 dims,
   per-channel CUSUM + delta-Mahalanobis + content grounding). `ServingConfig.fingerprint()`
-  covers model, temperature, serving prompt, tool roster and telemetry width; when
-  any of them moves the healthy null is *retired* rather than aged.
+  covers model, temperature, serving prompt, tool roster, telemetry width and the
+  monitor's own shape (reservoir size, K, channel set); when any of them moves the
+  healthy null is *retired* rather than aged.
 
 ## 7. What a fresh reader should run first
 

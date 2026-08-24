@@ -12240,21 +12240,21 @@
    "traces/real_task_rollback/rollback-multi_city_weather-wrong_document-01.jsonl": "016e3d96970e619d7bbefed76acb91915d549c6467d270f1a29be1c02159f401"
   },
   "docs": {
-   "CHECKSUMS.md": "67fc16dfd233ced07ecdaee4bf764bb13af482d4c6d020fed28a9032d981b9c0",
+   "CHECKSUMS.md": "575d6255e8645d84c9395fadb4a59ffb9cf17c48bf89a1dc3a3feed8a45f9625",
    "CLAIMS.md": "b8f7f2705f0fa82c9449b14eac5fd16766dbc6076c2c4ff39b2b30994c93884f",
    "CONTRIBUTIONS.md": "f1ace0e4b61b0626265f17671da8bb64f664e6dce29c0fb9e86b7e575428e144",
    "DATA_CARD.md": "20006a547dd2fe6e3d1d58a669e1b2a03c357f134eae089fffd0f49d79c4543f",
-   "DESIGN.md": "59a9656f7b6c3ddc5291582c5e9a80ecb0304fc00b7960ec442642cd15494672",
+   "DESIGN.md": "a134974d8d29252e17bde7dbc3989efe7b2bff3fbbf90849dfa83bf24eb276c9",
    "LICENSE": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
    "NOTICE": "4d84505c8ad61c5e2ab879898d2408285ebe3ecaa1a79e8b9f917320811fc0a5",
    "README.md": "28984c1cfef2eb0d10e226f60049c2e30f98b79a12475b2c9f3f7e3895a3f3d3",
-   "REPRODUCE.md": "222e26e42b04381e0cad210d3cef307fb8ab6fc4a516a0652b5f72284b849405",
+   "REPRODUCE.md": "73287d7cd9ad693e95ffba19f187db4575faea06b51b3e0adae860087e639b6a",
    "USER_GUIDE.md": "d05935732e554d104375ba3142f44c2c9e29fdad9d1f748c6da8c84e2b5798e2",
    "requirements-core.lock.txt": "3955fb616b7dffbb0f5b2de35ab2f229e362274187a86d5e4e5dc33eb13ee9bb",
    "requirements.lock.txt": "3bf6b8cc39209fff488e03a3ba1864f21ac7fa5130030caf63b0ad6e7a5223aa",
    "requirements.txt": "c0d8ba073904733a1c15ba00a77a25fd0aac5a0f33bea73c281a095d2debd57e"
   }
  },
- "note": "Feature hash quantised to 1e-6; re-recorded",
+ "note": "",
  "file_count": 12246
 }
