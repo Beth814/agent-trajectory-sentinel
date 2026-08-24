@@ -166,3 +166,24 @@ def test_the_calibrated_arm_reproduces_the_published_rates(tmp_path,
     assert calibrated.loc["autogen", "detection_rate"] == \
         pytest.approx(0.9130434782608695)
     assert calibrated.loc["autogen", "healthy_fa_rate"] == pytest.approx(0.125)
+
+
+def test_a_derived_freeze_still_loads_once_a_dependency_has_drifted():
+    """Regression: the lock proves CODE revisions, not one artifact.
+
+    The compatibility check used to be taken against whatever freeze was
+    being loaded rather than the one the lock describes. Once any dependency
+    drifted, that made every derived artifact -- a mutation probe, an
+    experiment -- fail with a stale-lock error instead of loading, because a
+    derived file can never hash to the canonical one. The proof is about the
+    dependency chain, so it must survive being applied to a different
+    artifact.
+    """
+    import inspect
+
+    assert freeze_module._proven_compatible_blobs() == \
+        freeze_module._proven_compatible_blobs(freeze_module.OUT_PATH)
+    caller = inspect.getsource(freeze_module.load_frozen_monitor)
+    assert "_proven_compatible_blobs()" in caller, (
+        "load_frozen_monitor must validate the lock against the freeze the "
+        "lock describes, not against the artifact it was handed")

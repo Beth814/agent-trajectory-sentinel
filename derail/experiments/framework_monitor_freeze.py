@@ -286,12 +286,23 @@ def build_freeze_artifact() -> dict:
     return artifact
 
 
-def _proven_compatible_blobs(freeze_path: Path) -> dict[str, list[str]]:
+def _proven_compatible_blobs(freeze_path: Path = OUT_PATH) -> dict[str, list[str]]:
     """Dependency revisions recorded as reconstructing this exact monitor.
 
-    Empty unless the companion lock exists AND still describes this freeze
-    byte for byte -- an edited freeze invalidates every proof taken against
-    the old one, and must not be waved through by a stale allowlist.
+    Empty unless the companion lock exists AND still describes the freeze it
+    was recorded against, byte for byte -- an edited freeze invalidates every
+    proof taken against the old one, and must not be waved through by a stale
+    allowlist.
+
+    `freeze_path` is the artifact the LOCK describes, which is the canonical
+    one; it is a parameter only so a test can point the check at a substitute.
+    It is deliberately NOT the artifact being loaded. What the lock records is
+    that a CODE revision reconstructs an identical monitor, and that is a fact
+    about the dependency chain, not about one artifact's hyperparameters -- so
+    it applies unchanged when a derived freeze (a mutation probe, an
+    experiment) is loaded from elsewhere. Tying it to the loaded path instead
+    made every such load fail the moment any dependency drifted, which is a
+    refusal to run rather than a safety property.
     """
     if not COMPAT_PATH.exists():
         return {}
@@ -328,7 +339,7 @@ def load_frozen_monitor(freeze_path: Path = OUT_PATH):
                if _git("rev-parse", f"HEAD:{path}") != frozen_blob}
     # Consulted only when something has actually drifted, so an unchanged
     # tree never depends on the companion lock existing or being current.
-    proven = _proven_compatible_blobs(freeze_path) if drifted else {}
+    proven = _proven_compatible_blobs() if drifted else {}
     for path, current_blob in drifted.items():
         frozen_blob = artifact["dependency_blob_hashes"][path]
         if current_blob in proven.get(path, ()):

@@ -79,6 +79,8 @@ from derail.common import (
     rng_for,
 )
 from derail.preconditions import error_shaped
+from derail.telemetry.goal_consistency import (  # noqa: F401
+    GoalConsistencyState, goal_features)
 from derail.telemetry.events import (parse_step_events)
 
 _HASH_BUCKETS = 512
@@ -706,17 +708,30 @@ def episode_from_trace(steps: list[dict], episode_id: str,
                        severity: float | None = None,
                        use_sentence_transformers: bool | None = None,
                        extended: bool = False,
-                       grounding: bool = False) -> Episode:
+                       grounding: bool = False,
+                       goal: bool = False) -> Episode:
     """Convert one run's step list into an Episode.
 
     Omit tau/failure_class for unlabeled (healthy-assumed or deployment)
     runs; pass them when you have ground truth for evaluation. With
     extended=True the Episode is (T, 51) including the derived x_t channel;
     grounding=True (implies extended) makes it (T, 60) with the content-
-    grounding channel g_t appended (telemetry v4, DESIGN.md amendment 3).
+    grounding channel g_t appended (telemetry v4, DESIGN.md amendment 3);
+    goal=True (implies grounding) makes it (T, 64) with the goal-consistency
+    channel c_t appended (telemetry v5, DESIGN.md amendment 8).
     """
     steps = validate_steps(steps, context=episode_id)
-    if grounding:
+    if goal:
+        ext_state, grd_state = ExtFeatureState(), GrdFeatureState()
+        # The goal is read from the FIRST step and held for the episode: the
+        # task does not change mid-run, and re-reading it per step would let a
+        # corrupted later step redefine what "on-goal" means.
+        goal_state = GoalConsistencyState(
+            task_anchor_text(steps[0], parse_step_events(steps[0])[1]))
+        X = np.array([np.concatenate([
+            step_signal_grd(s, ext_state, grd_state, use_sentence_transformers),
+            goal_features(s, goal_state)]) for s in steps])
+    elif grounding:
         ext_state, grd_state = ExtFeatureState(), GrdFeatureState()
         X = np.array([step_signal_grd(s, ext_state, grd_state,
                                       use_sentence_transformers)

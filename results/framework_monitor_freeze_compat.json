@@ -28,6 +28,17 @@
     ],
     "derail/monitor/esn.py": [
       "5fecd86d253f0540069311ae0220d5f10e73fa24"
+    ],
+    "derail/common.py": [
+      "155386ae7c333402ac254495ce6c49ee7f8180b2",
+      "5faf5de4c2554c7bd24f093adc7f4ce5fbd4492c"
+    ],
+    "derail/telemetry/adapter.py": [
+      "cd88de0f9809b2879be59effca8c67e48734bbdf",
+      "a1de607cf72f7f5927eea3c2cf39d74b9cd2496c"
+    ],
+    "derail/experiments/framework_monitor_freeze.py": [
+      "ae425a7e31a01ecfd961cb7149bfa96f0db654b7"
     ]
   },
   "reconstruction_digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
@@ -49,6 +60,29 @@
       "digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
       "added": [
         "derail/monitor/esn.py -> 5fecd86d253f"
+      ]
+    },
+    {
+      "commit": "90ca7772d3e9f43593573e796b8c4f23da4b71b8",
+      "digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
+      "added": [
+        "derail/common.py -> 155386ae7c33",
+        "derail/telemetry/adapter.py -> cd88de0f9809"
+      ]
+    },
+    {
+      "commit": "90ca7772d3e9f43593573e796b8c4f23da4b71b8",
+      "digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
+      "added": [
+        "derail/common.py -> 5faf5de4c255",
+        "derail/telemetry/adapter.py -> a1de607cf72f"
+      ]
+    },
+    {
+      "commit": "90ca7772d3e9f43593573e796b8c4f23da4b71b8",
+      "digest": "26a430f1f069e370c22478ce3599be56cdde1b5ef935d4d6c48c22d9024e812d",
+      "added": [
+        "derail/experiments/framework_monitor_freeze.py -> ae425a7e31a0"
       ]
     }
   ]

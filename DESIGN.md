@@ -1310,6 +1310,77 @@ the task's own required-call structure, never from the checks it is used to
 evaluate — and the held-out corpus was scored under the amended labels from
 the start, so the held-out result is not itself post-hoc.
 
+### Amendment 8 — optional goal-consistency channel c_t (E1, goal-drift observability)
+
+Motivation, measured rather than assumed: on the framework corpora the
+behavioural channels detect goal_drift at 1/6 (LangGraph) and 4/6 (AutoGen),
+and the per-episode forensics
+(`results/tables/framework_miss_rootcause.csv`) put several misses at
+`telemetry_lacks_signal` — the whole post-onset interior sits inside the
+healthy null, peak-to-healthy dimension ratio 1.00. That is the correct
+reading of the telemetry: an agent that switches to a *different* task and
+pursues it competently has ordinary latencies, ordinary action types and
+ordinary step-to-step embedding drift. Nothing in e, u, m or x compares the
+trajectory to the task, so no threshold on them can express "this is not what
+was asked". A missing information source enters as a channel, not as a monitor
+trick.
+
+**The signal.** For each step, a provenance question about the agent's own
+output: is the content of this action accounted for by the GOAL, or by
+earlier tool OUTPUT? An agent doing its job draws the substance of its calls
+from its task; a steered one draws it from something it read. Two surfaces
+(the arguments it sends, the prose it writes) times two quantities
+(abandonment, environment echo). Set algebra over content tokens — no model,
+no embedding, no second judge. A prompt-injection hijack is caught without the
+payload ever being recognised.
+
+**Contract.**
+- `D_GOAL = 4`, `D_TOTAL_GOAL = 64`; `CHANNEL_SLICES["c"] = slice(60, 64)`.
+- Episodes may now be 43, 51, 60 or 64 wide. Dims [0, 60) are byte-identical
+  to telemetry v4, so every frozen artifact keeps its meaning — verified by
+  `tests/test_goal_consistency.py` and by `devtools/baseline_lock.py --prove`
+  (the pre-fix baseline's reconstruction digest is unchanged at
+  `26a430f1f069`).
+- The channel exists only when `telemetry.adapter` is called with `goal=True`
+  (explicit; implies grounding=True). Defaults unchanged.
+- Dims, all causal, all in [0, 1], all oriented higher = more anomalous:
+  60 argument abandonment, 61 argument environment-echo, 62 prose
+  abandonment, 63 prose environment-echo. Echo is a subset of abandonment by
+  construction.
+- The CURRENT step's tool result is deliberately excluded. A payload landing
+  is the environment's doing; only the next action shows whether it was
+  adopted. Reading the current result would fire on the five of twelve
+  framework goal-drift episodes where a hijack arrived and was correctly
+  ignored — a false alarm, not a detection.
+- Argument dims are HELD across steps that issue no call. Without the hold a
+  synthesis step reads as a goal change, and measured on the framework corpora
+  that artifact alone puts healthy episodes BELOW drifted ones.
+- Traces with no recorded task text leave all four dims 0 (inert), like the
+  grounding channel on v1 traces.
+
+**What it buys, and what it costs** (`results/goal_channel_study.md`, 40
+paired development splits, Holm-corrected within deployment):
+- Detection of REALIZED goal drift rises on all three corpora — LangGraph
+  0.117 -> 0.550, AutoGen 0.458 -> 0.708, long-drift 0.080 -> 0.205, every one
+  Holm-significant — at no false-alarm cost (all deltas within noise, Holm
+  p = 1.000).
+- Every OTHER failure class loses, by about the same margin. The cause is not
+  masking: scoring the three-channel monitor at the two-channel monitor's
+  threshold restores every other class to its baseline exactly AND keeps the
+  goal-drift gain. A fixed 5% budget divided across one more channel is the
+  whole effect, and at the fold sizes these corpora allow (17-24 threshold
+  episodes) theta IS the single most extreme healthy episode, because the
+  order-statistic floor 1/(n+1) already exceeds the budget.
+
+**Status: the channel is NOT adopted into the frozen protocol.**
+`normalized_fusion[e+m]/rate/v2` stands. The observability question is
+answered — the failures are observable, causally and cheaply — but whether the
+channel earns a place in the fusion cannot be decided on a threshold fold of
+17 episodes, where one healthy episode sets theta. That decision belongs to
+the Phase-6 freeze, on the protocol's own floor of 80 threshold episodes and
+the untouched test size of 300 per framework, neither of which is collected
+yet.
+
 ### Module 10 — `derail/monitor/baseline.py` (self-calibrating baseline)
 
 A one-class monitor is defined by a reference distribution of healthy runs, and

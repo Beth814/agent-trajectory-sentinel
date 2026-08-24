@@ -5,6 +5,9 @@
     "e",
     "m"
   ],
+  "deferred_candidate_channels": [
+    "c"
+  ],
   "normalize_channels": true,
   "threshold_on": "fused_statistic",
   "fa_budget": 0.05,
@@ -22,6 +25,10 @@
     "results/tables/fusion_length_strata.csv",
     "results/tables/fusion_channel_wins.csv",
     "results/calibration_sample_size.md",
-    "results/healthy_admission_audit.md"
+    "results/healthy_admission_audit.md",
+    "results/goal_channel_study.md",
+    "results/tables/goal_channel_paired.csv",
+    "results/tables/goal_channel_threshold_allocation.csv",
+    "results/drift_realization_audit.md"
   ]
 }

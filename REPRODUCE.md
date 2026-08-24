@@ -274,6 +274,29 @@ absent.
 property of the machine, so `runtime.csv` is the source of record for the
 figures quoted, not a value you should expect to match.
 
+#### E1 diagnostics (development data only)
+
+These re-derive the E1 root-cause and design evidence from the committed
+traces. None of them produces a published number; each writes a report that
+says so at the top.
+
+```bash
+py -m derail.experiments.diagnose_framework_misses       # per-step interior of every miss
+py -m derail.experiments.diagnose_short_horizon          # washout / CUSUM-slack sweep
+py -m derail.experiments.diagnose_rollback_failures      # why each repair failed
+py -m derail.experiments.audit_healthy_admission         # what is in the healthy null
+py -m derail.experiments.calibration_sample_size         # how many healthy runs a threshold needs
+py -m derail.experiments.fusion_candidates               # which fused statistic, and cross-fitting
+py -m derail.experiments.audit_drift_realization         # did the injected hijack actually take
+py -m derail.experiments.goal_channel_study              # the goal-consistency channel (~25 min)
+```
+
+`audit_drift_realization` must be run before `goal_channel_study`: the study
+reports goal-drift detection against both the injected and the realized
+denominator, and the second comes from the audit. Both are deterministic; the
+goal-channel study is the slow one because it refits three monitors on forty
+paired splits across three corpora.
+
 ### Needs a served model (Ollama, local, free)
 
 ```

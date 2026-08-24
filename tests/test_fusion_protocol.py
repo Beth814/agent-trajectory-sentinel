@@ -82,3 +82,46 @@ def test_the_arm_comparison_reports_corrected_p_values(column):
     assert paired["replicates"].min() >= 30, (
         "below this project's replicate floor, where a gain at p = 0.004 has "
         "previously come back at p = 0.948 on a later block")
+
+
+def test_a_measured_but_unadopted_channel_is_recorded_with_its_reason():
+    """A channel that was tried and left out is part of the decision, not a
+    footnote. Without this the record would read as if it had never been
+    considered."""
+    assert PROTOCOL.deferred_candidate_channels == ("c",)
+    assert not set(PROTOCOL.deferred_candidate_channels) & set(PROTOCOL.channels)
+    source = (REPO_ROOT / "derail" / "monitor" /
+              "fusion_protocol.py").read_text("utf-8")
+    assert "Measured and NOT adopted" in source
+    assert "Phase-6 freeze" in source, (
+        "the record must say what would settle the question, not only that "
+        "it is open")
+
+
+def test_the_deferred_channel_claim_matches_its_evidence():
+    """The reason given for deferring is a measurement, so it has to agree
+    with the committed table it rests on: the other classes must come back at
+    the two-channel threshold, or the stated cause is wrong."""
+    allocation = pd.read_csv(REPO_ROOT / "results" / "tables" /
+                             "goal_channel_threshold_allocation.csv")
+    detection = [c for c in allocation.columns if c.startswith("det_")]
+    others = [c for c in detection if c != "det_goal_drift"]
+    assert others, "no non-drift classes in the allocation table to check"
+    for dataset, group in allocation.groupby("dataset"):
+        means = group.groupby("condition")[detection].mean()
+        if "det_goal_drift" not in means.columns or len(means) < 3:
+            continue
+        base = means.loc["e+m at its own theta"]
+        matched = means.loc["e+m+c at the e+m theta"]
+        for column in others:
+            # A corpus that injects only goal_drift has no other class to
+            # check; that is a property of the corpus, not a pass.
+            if pd.isna(base[column]) or pd.isna(matched[column]):
+                continue
+            assert matched[column] >= base[column] - 0.05, (
+                f"{dataset}: at a matched threshold the goal channel still "
+                f"costs {column} ({matched[column]:.3f} vs {base[column]:.3f}), "
+                f"so the deferral reason -- budget, not masking -- is wrong")
+        assert matched["det_goal_drift"] > base["det_goal_drift"], (
+            f"{dataset}: the goal channel adds no drift detection even at a "
+            f"matched threshold, so there is nothing to defer")

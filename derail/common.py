@@ -132,6 +132,40 @@ IDX_GRD_LEX_MISS = 59     # lexical retrieval-relevance miss: for DOCUMENT
 
 CHANNEL_SLICES["g"] = GRD_SLICE
 
+# --------------------------------------------------------------------------
+# OPTIONAL goal-consistency channel c_t (telemetry v5, dims [60, 64)).
+# Only episodes built with telemetry.adapter goal=True have it (which implies
+# grounding=True). It asks a question no other channel can: not "is this step
+# unusual" but "is this step still about the task", by measuring whether the
+# content of each action is accounted for by the GOAL or by earlier tool
+# OUTPUT. That is what makes a competently executed wrong task observable --
+# such a run's latencies, action types and step-to-step drift are ordinary,
+# which is why goal_drift episodes sit inside the healthy null of e/u/m/x.
+# Every dim is causal, in [0, 1], and oriented so HIGHER = more anomalous.
+# Appended above the grounding block (DESIGN.md amendment 8), so dims
+# [0, 60) are byte-identical to telemetry v4 and every frozen artifact
+# keeps its meaning.
+# Traces with no recorded task text leave all four dims 0 (inert), never an
+# error -- see telemetry.goal_consistency.
+# --------------------------------------------------------------------------
+D_GOAL = 4
+D_TOTAL_GOAL = D_TOTAL_GRD + D_GOAL  # 64
+
+GOAL_SLICE = slice(D_TOTAL_GRD, D_TOTAL_GOAL)  # c_t (derived, goal-relative)
+
+IDX_GOAL_ARG_ABANDON = 60   # share of the tool ARGUMENTS the agent sent that
+                            # the goal does not account for; held across steps
+                            # that issue no call, so finishing is not drift
+IDX_GOAL_ARG_ECHO = 61      # the part of that share which EARLIER tool output
+                            # does account for — the agent is sourcing its
+                            # actions from what it read, not from its task
+IDX_GOAL_PROSE_ABANDON = 62  # same measure on the agent's own prose: catches
+                            # answer-level contamination when the calls stay
+                            # on-goal
+IDX_GOAL_PROSE_ECHO = 63    # environment echo in that prose
+
+CHANNEL_SLICES["c"] = GOAL_SLICE
+
 ACTION_TYPES: tuple[str, ...] = ("plan", "tool_call", "tool_result", "synthesis")
 
 FAILURE_CLASSES: tuple[str, ...] = (
@@ -233,7 +267,8 @@ class Episode:
 
     def __post_init__(self) -> None:
         self.T = int(self.X.shape[0])
-        assert self.X.shape[1] in (D_TOTAL, D_TOTAL_EXT, D_TOTAL_GRD), \
+        assert self.X.shape[1] in (D_TOTAL, D_TOTAL_EXT, D_TOTAL_GRD,
+                                   D_TOTAL_GOAL), \
             f"bad X width {self.X.shape}"
         if self.is_healthy:
             assert self.failure_class is None and self.tau is None

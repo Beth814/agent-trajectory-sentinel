@@ -41,6 +41,22 @@ class FusionProtocol:
     #: logprobs, which is a property of the deployment, not a choice.
     channels: tuple[str, ...] = ("e", "m")
 
+    #: Measured and NOT adopted. The goal-consistency channel `c`
+    #: (DESIGN.md amendment 8) is the only telemetry that can express "this
+    #: is not the task that was asked", and adding it raises detection of
+    #: REALIZED goal drift on all three development corpora at no
+    #: false-alarm cost (LangGraph 0.117 -> 0.550, AutoGen 0.458 -> 0.708,
+    #: long-drift 0.080 -> 0.205; Holm-significant on each). It is not in
+    #: `channels` because the same runs lose an equal amount on every other
+    #: class, and the cause is arithmetic rather than interference: scoring
+    #: the three-channel monitor at the two-channel threshold restores the
+    #: other classes exactly AND keeps the goal-drift gain. A fixed budget
+    #: split across one more channel is the whole effect. On a threshold
+    #: fold of 17-24 episodes the order-statistic floor 1/(n+1) already
+    #: exceeds 5%, so one healthy episode sets theta and the split cannot be
+    #: measured. Decide at the Phase-6 freeze, on >= 80 threshold episodes.
+    deferred_candidate_channels: tuple[str, ...] = ("c",)
+
     #: Each channel is mapped through the median and IQR of ITS OWN healthy
     #: null before the max. Retained on structural grounds, not for accuracy:
     #: measured over 40 paired splits it moves detection by +0.009 and +0.008
@@ -89,11 +105,17 @@ class FusionProtocol:
         "results/tables/fusion_channel_wins.csv",
         "results/calibration_sample_size.md",
         "results/healthy_admission_audit.md",
+        "results/goal_channel_study.md",
+        "results/tables/goal_channel_paired.csv",
+        "results/tables/goal_channel_threshold_allocation.csv",
+        "results/drift_realization_audit.md",
     ))
 
     def as_record(self) -> dict:
         record = asdict(self)
         record["channels"] = list(self.channels)
+        record["deferred_candidate_channels"] = list(
+            self.deferred_candidate_channels)
         record["evidence"] = list(self.evidence)
         return record
 
