@@ -709,7 +709,8 @@ def episode_from_trace(steps: list[dict], episode_id: str,
                        use_sentence_transformers: bool | None = None,
                        extended: bool = False,
                        grounding: bool = False,
-                       goal: bool = False) -> Episode:
+                       goal: bool = False,
+                       reliability: bool = False) -> Episode:
     """Convert one run's step list into an Episode.
 
     Omit tau/failure_class for unlabeled (healthy-assumed or deployment)
@@ -718,10 +719,23 @@ def episode_from_trace(steps: list[dict], episode_id: str,
     grounding=True (implies extended) makes it (T, 60) with the content-
     grounding channel g_t appended (telemetry v4, DESIGN.md amendment 3);
     goal=True (implies grounding) makes it (T, 64) with the goal-consistency
-    channel c_t appended (telemetry v5, DESIGN.md amendment 8).
+    channel c_t appended (telemetry v5, DESIGN.md amendment 8);
+    reliability=True (implies goal) makes it (T, 71) with the tool-reliability
+    channel r_t appended (telemetry v6). Dims [0, 64) are identical either way.
     """
     steps = validate_steps(steps, context=episode_id)
-    if goal:
+    if reliability:
+        from derail.telemetry.reliability import (ReliabilityState,
+                                                  reliability_features)
+        ext_state, grd_state = ExtFeatureState(), GrdFeatureState()
+        goal_state = GoalConsistencyState(
+            task_anchor_text(steps[0], parse_step_events(steps[0])[1]))
+        rel_state = ReliabilityState()
+        X = np.array([np.concatenate([
+            step_signal_grd(s, ext_state, grd_state, use_sentence_transformers),
+            goal_features(s, goal_state),
+            reliability_features(s, rel_state)]) for s in steps])
+    elif goal:
         ext_state, grd_state = ExtFeatureState(), GrdFeatureState()
         # The goal is read from the FIRST step and held for the episode: the
         # task does not change mid-run, and re-reading it per step would let a

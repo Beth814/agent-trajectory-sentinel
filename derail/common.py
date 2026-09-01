@@ -166,6 +166,37 @@ IDX_GOAL_PROSE_ECHO = 63    # environment echo in that prose
 
 CHANNEL_SLICES["c"] = GOAL_SLICE
 
+# --------------------------------------------------------------------------
+# OPTIONAL tool-reliability channel r_t (telemetry v6, dims [64, 71)).
+# Only episodes built with telemetry.adapter reliability=True have it (which
+# implies goal=True). `error_flag` is per-step and memoryless, so an isolated
+# flake and the third step of a cascade look alike; healthy runs already carry
+# errors on ~9% of steps, so error presence has almost no contrast. This
+# channel carries the SHAPE of failure instead: its scope, its repetition and
+# its failure to clear. Appended above the goal block, so dims [0, 64) are
+# byte-identical to telemetry v5 and every frozen artifact keeps its meaning.
+# Causal, bounded in [0, 1], HIGHER = more anomalous; a trace with no tool
+# events leaves all seven dims 0 (inert), never an error.
+# --------------------------------------------------------------------------
+D_REL = 7
+D_TOTAL_REL = D_TOTAL_GOAL + D_REL  # 71
+
+REL_SLICE = slice(D_TOTAL_GOAL, D_TOTAL_REL)  # r_t (derived, tool reliability)
+
+IDX_REL_FAIL_FRAC = 64        # share of THIS step's calls that errored
+IDX_REL_DISTINCT_FAILING = 65  # distinct tools failing and not yet recovered,
+                               # over distinct tools used so far
+IDX_REL_REPEAT_FAIL = 66      # share of this step's failures whose exact
+                              # (name, args) already failed earlier: a retry
+                              # that fails again is not flakiness
+IDX_REL_CONSEC_FAIL = 67      # consecutive failing calls across steps
+IDX_REL_SINCE_CLEAN = 68      # steps since the last successful tool result;
+                              # runs only after the episode's first tool call
+IDX_REL_NO_RECOVERY = 69      # share of tools that failed and never recovered
+IDX_REL_BURST = 70            # mean failure fraction over the last 3 steps
+
+CHANNEL_SLICES["r"] = REL_SLICE
+
 ACTION_TYPES: tuple[str, ...] = ("plan", "tool_call", "tool_result", "synthesis")
 
 FAILURE_CLASSES: tuple[str, ...] = (
@@ -268,7 +299,7 @@ class Episode:
     def __post_init__(self) -> None:
         self.T = int(self.X.shape[0])
         assert self.X.shape[1] in (D_TOTAL, D_TOTAL_EXT, D_TOTAL_GRD,
-                                   D_TOTAL_GOAL), \
+                                   D_TOTAL_GOAL, D_TOTAL_REL), \
             f"bad X width {self.X.shape}"
         if self.is_healthy:
             assert self.failure_class is None and self.tau is None

@@ -35,7 +35,7 @@ from derail.monitor.esn import _WASHOUT
 
 #: Interpretable derived dims. The 32 semantic embedding dims are excluded:
 #: individually they carry no meaning, so a per-dim tail on them is noise.
-DERIVED_DIMS = tuple(range(32, 36)) + (40, 41, 42) + tuple(range(43, 64))
+DERIVED_DIMS = tuple(range(32, 36)) + (40, 41, 42) + tuple(range(43, 71))
 WINDOW = 3
 
 

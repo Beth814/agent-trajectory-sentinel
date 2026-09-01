@@ -103,7 +103,7 @@ def arm_name(channels: tuple[str, ...]) -> str:
     return "+".join(channels)
 
 
-def load_goal_corpus(corpus: str) -> tuple[list, dict]:
+def load_goal_corpus(corpus: str, reliability: bool = False) -> tuple[list, dict]:
     """Episodes carrying the goal channel, plus their manifest entries."""
     corpus_dir = TRACES_ROOT / corpus
     manifest = json.loads((corpus_dir / "manifest.json").read_text("utf-8"))
@@ -116,7 +116,8 @@ def load_goal_corpus(corpus: str) -> tuple[list, dict]:
             steps, entry["episode_id"],
             tau=entry["tau"] if entry["failure_class"] else None,
             failure_class=entry["failure_class"],
-            use_sentence_transformers=False, goal=True))
+            use_sentence_transformers=False, goal=True,
+            reliability=reliability))
         meta[entry["episode_id"]] = {**entry, "_steps": steps}
     return episodes, meta
 
