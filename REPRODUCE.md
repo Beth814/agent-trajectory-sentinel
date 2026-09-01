@@ -83,7 +83,7 @@ sentence-transformers — installing that package must never change a result.
 ## 3. Data
 
 `DATA_CARD.md` is the full per-corpus card, generated from the manifests.
-Summary: **3,294 episodes across 31 corpora**, of which 1,319 use real tools.
+Summary: **3,878 episodes across 34 corpora**, of which 1,903 use real tools.
 The arXiv v1 submission describes the tree at commit `00c0673`, which held
 **2,823 episodes across 25 corpora** (770 real-tool); that state is preserved
 by its tag, and the ledger carries both figures as `corpus.*` and `corpus.*_v1`.
@@ -94,11 +94,11 @@ derives all of them from the manifests and prints the identities that hold:
 
 | identity | holds |
 |---|---|
-| committed = healthy + injected (3,294 = 2,108 + 1,186) | yes |
+| committed = healthy + injected (3,878 = 2,645 + 1,233) | yes |
 | v1 = v1 healthy + v1 injected (2,823 = 1,825 + 998) | yes |
-| committed = v1 + added since (3,294 = 2,823 + 471) | yes |
-| all committed = glob scope + root corpus (3,481 = 3,294 + 187) | yes |
-| attempted = accepted + rejected, where recorded (2,248 = 1,707 + 541) | yes |
+| committed = v1 + added since (3,878 = 2,823 + 1,055) | yes |
+| all committed = glob scope + root corpus (4,065 = 3,878 + 187) | yes |
+| attempted = accepted + rejected, where recorded (2,557 = 2,004 + 553) | yes |
 | v1 healthy + behavioural study = v1 total (1,825 + 1,002 = 2,823) | **no** |
 
 The last one is the trap: it lands at 2,827, four away from 2,823, and looks

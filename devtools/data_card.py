@@ -74,6 +74,12 @@ PURPOSE: dict[str, str] = {
     "real_task_rollback": "REAL_TASKS corpus (objective success_fn) for "
                           "live rollback/retry recovery scoring -- not "
                           "pooled with the booking-domain repair study",
+    "real_task_rollback_healthy": "Healthy null for the deployment the repair "
+                                  "path serves: same collector, tasks and "
+                                  "model as real_task_rollback, admitted only "
+                                  "where the task's own verifier passed. Fits, "
+                                  "scales and thresholds the served detector; "
+                                  "no injected episode is in it",
     "langgraph7b_real2": "LangGraph StateGraph agent x real tools, disjoint "
                          "from langgraph7b_real -- per-deployment healthy-only "
                          "calibration, sized for a usable healthy fit",

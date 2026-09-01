@@ -32,5 +32,6 @@ real_research7b_long,True,True,True,30,42,72,0,72
 real_research7b_long_drift,True,True,False,120,120,240,0,240
 real_research7b_long_ext,True,True,True,30,91,121,0,121
 real_task_rollback,True,True,False,4,16,20,0,20
+real_task_rollback_healthy,True,True,False,297,0,297,12,309
 _aftraj,False,True,False,1111,771,1882,0,1882
 gemini (traces root),True,False,False,100,87,187,0,187

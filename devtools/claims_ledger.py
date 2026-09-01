@@ -149,6 +149,7 @@ ADDED_AFTER_V1 = frozenset({
     "real_task_rollback",            # rollback/retry recovery source corpus
     "langgraph7b_real2",             # per-deployment calibration: LangGraph
     "autogen7b_real2",               # per-deployment calibration: AutoGen
+    "real_task_rollback_healthy",    # healthy null the served detector is calibrated on
 })
 
 
@@ -772,13 +773,13 @@ def build() -> list[Claim]:
         # describes. Both are checked, so neither can drift into the other:
         # a doc describing the repository quotes the current figure, and a doc
         # describing the v1 submission quotes the `*_v1` one.
-        Claim("corpus.episodes", "Committed agent episodes (current)", 3581,
+        Claim("corpus.episodes", "Committed agent episodes (current)", 3878,
               "traces/*/manifest.json", "py -m devtools.claims_ledger --check",
               _episode_total, "Corpus"),
-        Claim("corpus.datasets", "Committed corpora (current)", 33,
+        Claim("corpus.datasets", "Committed corpora (current)", 34,
               "traces/*/manifest.json", "py -m devtools.claims_ledger --check",
               _corpus_count, "Corpus"),
-        Claim("corpus.real_tools", "Episodes using real tools (current)", 1606,
+        Claim("corpus.real_tools", "Episodes using real tools (current)", 1903,
               "traces/*/manifest.json (content-derived: see real_tools."
               "episode_used_real_tools)", "py -m devtools.claims_ledger --check",
               _real_tool_episodes, "Corpus"),
@@ -792,7 +793,7 @@ def build() -> list[Claim]:
               187, "results/tables/episode_accounting.csv", ACCOUNTING_CMD,
               lambda: _accounting("root_corpus_episodes"), "Corpus"),
         Claim("accounting.committed_all",
-              "Committed episodes of ours including the root corpus", 3768,
+              "Committed episodes of ours including the root corpus", 4065,
               "results/tables/episode_accounting.csv", ACCOUNTING_CMD,
               lambda: _accounting("committed_episodes_all"), "Corpus"),
         Claim("accounting.study_overlap",

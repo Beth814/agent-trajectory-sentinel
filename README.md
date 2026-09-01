@@ -712,7 +712,7 @@ worth building. Sources in [`CLAIMS.md`](CLAIMS.md).
   and what does not work yet.
 - [`REPRODUCE.md`](REPRODUCE.md) — models, seeds, hardware, package versions,
   settings, and the exact command behind each result.
-- [`DATA_CARD.md`](DATA_CARD.md) — all 3,294 episodes across 31 corpora: sizes,
+- [`DATA_CARD.md`](DATA_CARD.md) — all 3,878 episodes across 34 corpora: sizes,
   models, injected vs organic, episode lengths, channel availability. The same corpus is published
   on Hugging Face as
   [`sunnydubey1111/agent-trajectory-sentinel`](https://huggingface.co/datasets/sunnydubey1111/agent-trajectory-sentinel),

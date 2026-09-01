@@ -1,8 +1,8 @@
 """One derivation of every episode total this project quotes.
 
-Several totals circulate and they do not add up to each other: 3,294 committed
-episodes, 2,823 as of arXiv v1, 2,080 healthy, 2,248 collection attempts with
-541 discarded, 1,002 in the behavioural study, 874 in the grounding study,
+Several totals circulate and they do not add up to each other: 3,878 committed
+episodes, 2,823 as of arXiv v1, 2,080 healthy, 2,557 collection attempts with
+553 discarded, 1,002 in the behavioural study, 874 in the grounding study,
 1,825 healthy in the false-positive claim. Each is correct for what it counts.
 The failure mode is arithmetic performed ACROSS them — most memorably
 1,825 + 1,002 = 2,827, which lands four short of 2,823 and looks like a

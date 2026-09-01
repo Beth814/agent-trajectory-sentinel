@@ -5,15 +5,15 @@ manifests, so it cannot drift from what is committed.
 
 ## What is here
 
-- **3,581 agent episodes** across **33 corpora**, every
+- **3,878 agent episodes** across **34 corpora**, every
   trace committed as JSONL under `traces/`.
-- **1,606** of those episodes use *real* tools (arXiv, Wikipedia,
+- **1,903** of those episodes use *real* tools (arXiv, Wikipedia,
   web fetch, SQL, Python); the rest use a deterministic mock-tool suite.
 - Episodes per agent model:
 
 | model | episodes |
 |---|---:|
-| `qwen2.5:7b` | 2,648 |
+| `qwen2.5:7b` | 2,945 |
 | `llama3.1:8b` | 433 |
 | `qwen2.5:3b` | 357 |
 | `gemini-2.5-flash` | 143 |
@@ -90,6 +90,7 @@ uncertainty channel.
 | `real_research7b_long_drift` | 240 | `qwen2.5:7b` | 120 | 120 | 120 | 240 | 4/11/15 | Long-runway real goal_drift, collected to test the conceptor mechanism; post-onset horizon (T-1-tau) is median 8, range 1-10, with 19 of 120 reaching >=9 |
 | `real_research7b_long_ext` | 121 | `qwen2.5:7b` | 30 | 91 | 91 | 121 | 11/11/16 | Extension of the lengthened research corpus |
 | `real_task_rollback` | 20 | `qwen2.5:7b` | 4 | 16 | 16 | 20 | 4/7/12 | REAL_TASKS corpus (objective success_fn) for live rollback/retry recovery scoring -- not pooled with the booking-domain repair study |
+| `real_task_rollback_healthy` | 297 | `qwen2.5:7b` | 297 | 0 | 0 | 297 | 4/6/12 | Healthy null for the deployment the repair path serves: same collector, tasks and model as real_task_rollback, admitted only where the task's own verifier passed. Fits, scales and thresholds the served detector; no injected episode is in it |
 
 ## Collection settings
 
@@ -109,7 +110,7 @@ uncertainty channel.
 
 ## What the acceptance gate discarded
 
-14 corpora record rejections. The discard rate is not uniform and
+15 corpora record rejections. The discard rate is not uniform and
 the reader should not assume it is:
 
 | corpus | attempted | rejected | discard |
@@ -117,6 +118,7 @@ the reader should not assume it is:
 | `real_research3b` | 83 | 1 | 1.2% |
 | `real_ollama7b` | 62 | 1 | 1.6% |
 | `real_research7b` | 296 | 5 | 1.7% |
+| `real_task_rollback_healthy` | 309 | 12 | 3.9% |
 | `ollama7b` | 166 | 11 | 6.6% |
 | `langgraph7b` | 218 | 22 | 10.1% |
 | `autogen7b` | 170 | 22 | 12.9% |
@@ -128,7 +130,7 @@ the reader should not assume it is:
 | `ollama_llama8b` | 380 | 187 | 49.2% |
 | `real` | 39 | 21 | 53.8% |
 | `langgraph` | 168 | 93 | 55.4% |
-| **total** | **2248** | **541** | **24.1%** |
+| **total** | **2557** | **553** | **21.6%** |
 
 The range is 1.2% (`real_research3b`) to 55.4% (`langgraph`), so a per-corpus N in
 the table above is not a fixed fraction of what was attempted.
@@ -141,10 +143,12 @@ never tested against:
 
 | rejection rule | healthy | injected |
 |---|---|---|
-| too short: T=N < N | 157 | 234 |
+| too short: T=N < N | 167 | 234 |
 | injection never applied | 0 | 128 |
 | mutation landed at step N with no following step | 0 | 15 |
 | retroactive gate: no_op_positive | 0 | 7 |
+| task did not succeed: not a healthy episode | 1 | 0 |
+| excluded from the admitted healthy set: the first valid attempt failed the independent task verifier. A later retry of the same slot passed, but a successful retry does not convert a slot whose valid attempt failed into a healthy negative. | 1 | 0 |
 
 An injected episode whose mutation never applied is not a failure
 episode, so keeping it would mislabel the data; dropping it still
