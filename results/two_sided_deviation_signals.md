@@ -44,6 +44,13 @@ grounding dims separate perfectly downward, still scored as healthy. Each tail
 is scaled by the deviation at which that side alone would spend 5% of the
 healthy budget, which also puts every dim on one footing regardless of units.
 
+**A causal persistence feature.** How many consecutive steps a dim has stayed
+on one side of its healthy centre. Tool cascade is a contrast problem rather
+than a sensitivity one -- healthy runs already carry errors on 8.8% of steps,
+so an error is not by itself unusual. What is unusual is an error that does not
+clear: isolated flakiness gives a run of one, a cascade gives a run that keeps
+growing.
+
 **A windowed spread feature.** On the long-drift corpus post-onset steps are
 not extreme at all — they are unusually uniform. No per-step deviation can see
 a collapse in variability, so the windowed standard deviation of each dim is
@@ -84,7 +91,7 @@ detection counted only at or after onset.
 | e+m+g/mean (frozen) | 0.037 | **0.511** | 0.519 |
 | deviation, level+spread | 0.040 | 0.210 | 0.334 |
 | e+m+g/mean + deviation (level) | 0.037 | 0.433 | 0.468 |
-| e+m+g/mean + deviation (level+spread) | 0.042 | 0.488 | **0.551** |
+| e+m+g/mean + deviation (level+spread+persist) | 0.043 | 0.514 | **0.578** |
 
 The branches are combined the way the union study established as the only sound
 method: each divided by its own scale-fold tail value, then a maximum, then one
@@ -98,17 +105,27 @@ False alarms stay inside budget on every corpus and arm reported here.
 ## What it does not buy
 
 **No arm dominates everywhere.** The level feature carries the framework
-corpora; the spread feature carries long drift; the fused channels carry
-context corruption. The combined arm loses 0.05 of realized drift on long_drift
-against the frozen detector and gives back some tool cascade on LangGraph
-(0.325 to 0.250).
+corpora; spread and persistence carry long drift; the fused channels carry
+context corruption. `e+m+g/mean + level` is best on both framework corpora and
+loses 0.519 to 0.468 on long drift; adding spread and persistence recovers long
+drift to 0.578, above the frozen detector, but costs LangGraph. Choosing one
+configuration for all three is currently a trade, not a win.
 
-**tool_cascade is barely moved** — 0.125 to 0.250 across corpora against a
-target of 1.000. Its best single dim is `error_flag` at AUC 0.83, and the
-reason it is not higher is contrast rather than sensitivity: healthy episodes
-already carry errors on 8.8% of steps, so an error is not by itself unusual.
-Separating a cascade from ordinary flakiness needs a signal about error
-*persistence and scope* that the current telemetry does not carry.
+**tool_cascade is barely moved.** The persistence feature gives the best figure
+yet on LangGraph — 0.400 against 0.325 for the frozen detector and 0.367 for
+`e+m/max` — but at a false alarm rate of 0.063, outside budget, and the same
+feature is unusable on AutoGen, where a CUSUM over run lengths reaches a false
+alarm rate of 0.268. Run lengths are integer-valued and their healthy null is
+poorly estimated on a 30-episode fit fold, which is the likely cause. Against a
+target of 1.000 the class is not close.
+
+The remaining gap is a telemetry one. `error_flag` is per-step and memoryless,
+and persistence recovers only part of what is missing: a cascade is
+distinguished from flakiness by its SCOPE and its failure to recover — how many
+distinct tools are affected, whether a retry of the same call also fails, how
+long recovery takes. None of that is in the current 64 dims. It does not need
+new collection: telemetry is derived from the stored traces, so new dims can be
+computed by re-deriving the existing corpora.
 
 **None of this is at the target.** No class reaches 1.000 on every corpus, and
 the standing requirement is 100% observed detection per class. This is progress

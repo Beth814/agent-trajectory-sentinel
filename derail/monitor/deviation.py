@@ -13,6 +13,12 @@ telemetry:
            they are unusually UNIFORM. No per-step deviation can see a collapse
            in variability, so the windowed standard deviation of each dim is
            scored as a feature in its own right.
+  persist  how many consecutive steps a dim has stayed on one side of its
+           healthy centre. Tool cascade is a CONTRAST problem, not a
+           sensitivity one -- healthy runs already carry errors on about 9% of
+           steps, so an error is not by itself unusual. What is unusual is an
+           error that does not clear: isolated flakiness gives a run of one, a
+           cascade gives a run that keeps growing.
 
 Each feature is scored against its own healthy null with a SEPARATE scale per
 tail: a shared scale in a skewed dim lets the fat side set the divisor and
@@ -45,6 +51,7 @@ class DeviationMonitor:
         self.feature = feature
         self.window = window
         self._scales: dict[tuple[str, int], tuple | None] = {}
+        self._centres = np.zeros(len(self.dims))
         self._drift = 0.0
         self.start_episode()
 
@@ -60,6 +67,20 @@ class DeviationMonitor:
             spreads.append(stacked.std(axis=0) if stacked.shape[0] > 1
                            else np.zeros(len(self.dims)))
         return np.asarray(levels), np.asarray(spreads)
+
+    def _runs(self, ep, centres):
+        """Signed run length: consecutive steps on one side of the centre."""
+        run = np.zeros(len(self.dims))
+        side = np.zeros(len(self.dims))
+        out = []
+        for t in range(ep.T):
+            row = ep.X[t, list(self.dims)]
+            now = np.sign(row - centres)
+            same = (now == side) & (now != 0)
+            run = np.where(same, run + 1.0, np.where(now != 0, 1.0, 0.0))
+            side = np.where(now != 0, now, side)
+            out.append(run * side)
+        return np.asarray(out)
 
     def _tail_scales(self, col):
         centre = float(np.median(col))
@@ -86,6 +107,15 @@ class DeviationMonitor:
         for i, d in enumerate(self.dims):
             self._scales[("level", d)] = self._tail_scales(lv[:, i])
             self._scales[("spread", d)] = self._tail_scales(sp[:, i])
+        # Run lengths need the centres, so they are fitted in a second pass.
+        self._centres = np.array([
+            self._scales[("level", d)][0] if self._scales[("level", d)] else 0.0
+            for d in self.dims])
+        runs = [self._runs(ep, self._centres)[_WASHOUT:]
+                for ep in healthy if ep.T > _WASHOUT]
+        runs = np.concatenate(runs)
+        for i, d in enumerate(self.dims):
+            self._scales[("persist", d)] = self._tail_scales(runs[:, i])
         return self
 
     def fit_reference(self, healthy) -> "DeviationMonitor":
@@ -94,8 +124,10 @@ class DeviationMonitor:
         for ep in healthy:
             self.start_episode()
             for t in range(ep.T):
-                self._buf.append(np.asarray(ep.X[t])[list(self.dims)])
-                vals.append(self._surprise())
+                # The RAW surprise, never the accumulated statistic: measuring
+                # the drift constant off the CUSUM would collapse every score
+                # to zero and tie the whole calibration fold.
+                vals.append(self._advance(ep.X[t]))
         finite = [v for v in vals if np.isfinite(v)]
         self._drift = float(np.median(finite)) if finite else 0.0
         return self
@@ -104,6 +136,8 @@ class DeviationMonitor:
         self._buf = collections.deque(maxlen=self.window)
         self._state = 0.0
         self._t = 0
+        self._run = np.zeros(len(self.dims))
+        self._side = np.zeros(len(self.dims))
 
     def _score_one(self, kind, d, value):
         ref = self._scales.get((kind, d))
@@ -118,14 +152,21 @@ class DeviationMonitor:
         stacked = np.asarray(self._buf)
         level = stacked[-1]
         spread = stacked.std(axis=0) if stacked.shape[0] > 1 else None
+        want = ({"level", "spread", "persist"} if self.feature == "all"
+                else {"level", "spread"} if self.feature == "both"
+                else {self.feature})
         out = []
         for i, d in enumerate(self.dims):
-            if self.feature in ("level", "both"):
+            if "level" in want:
                 v = self._score_one("level", d, level[i])
                 if v is not None:
                     out.append(v)
-            if self.feature in ("spread", "both") and spread is not None:
+            if "spread" in want and spread is not None:
                 v = self._score_one("spread", d, spread[i])
+                if v is not None:
+                    out.append(v)
+            if "persist" in want:
+                v = self._score_one("persist", d, self._run[i] * self._side[i])
                 if v is not None:
                     out.append(v)
         if not out:
@@ -137,9 +178,19 @@ class DeviationMonitor:
             return float(np.sort(arr)[::-1][:min(self.top_k, arr.size)].mean())
         return float(arr.mean())
 
+    def _advance(self, x: np.ndarray) -> float:
+        """Update the causal state for one step and return its raw surprise."""
+        row = np.asarray(x)[list(self.dims)]
+        self._buf.append(row)
+        now = np.sign(row - self._centres)
+        same = (now == self._side) & (now != 0)
+        self._run = np.where(same, self._run + 1.0,
+                             np.where(now != 0, 1.0, 0.0))
+        self._side = np.where(now != 0, now, self._side)
+        return self._surprise()
+
     def score_step(self, x: np.ndarray) -> float:
-        self._buf.append(np.asarray(x)[list(self.dims)])
-        s = self._surprise()
+        s = self._advance(x)
         self._t += 1
         if self._t <= _WASHOUT:
             return -np.inf
