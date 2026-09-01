@@ -95,19 +95,43 @@ was meant to avoid having to make.
 The design that follows from this has not been measured: keep the flat
 `e+m`-based detector for the classes it already serves and add the `g` gate to
 `c` path beside it, splitting the 5% budget between the two rather than
-choosing between them. That is the next experiment, and it is named here
-rather than run, because the conditional calibration fold is still small --
-5 to 17 healthy episodes at the useful gate rates -- and sizing it is the
-prior question.
+choosing between them. That is the next experiment, and it is named here rather
+than run.
 
 ### The remaining blocker, restated correctly
 
-Not the budget arithmetic, which holds. The conditional stage needs the same
-80-episode floor the flat protocol already requires, which at a 25% gate means
-roughly 320 verified healthy episodes per deployment against the 120 these
-corpora hold. Until then a conditional threshold is read off single-digit
-samples, and that is what the small folds in the table above are.
+The budget arithmetic holds, and the conditional fold is not the constraint it
+was taken to be. A threshold at the `k`-th largest of `n` healthy values fires
+on fresh healthy episodes at a rate distributed `Beta(k, n + 1 - k)`, so the
+precision of any false-alarm calibration is governed by the number of
+calibration episodes above the final threshold. For the flat detector that is
+`0.05 x N`; for the two-stage detector it is `p2 x (p1 x N)`, which is
+`0.05 x N` as well. The two designs need the same calibration fold, and a
+conditional fold of 20 resolving a 20% rate is exactly as precise as a fold of
+80 resolving 5%.
+
+So the earlier figure of roughly 320 healthy episodes per deployment was wrong:
+it required the conditional fold to match the flat protocol's 80-episode floor,
+when what has to match is the exceedance count, not the fold size. At the same
+precision the frozen flat detector already runs at -- 4 exceedances -- the
+conditional design needs 80 calibration episodes and yields a conditional fold
+of 20. The deployment corpus already holds that.
+
+What neither design holds is precision better than that. Four exceedances put
+the 95th percentile of the realized false alarm rate at 9.4% against a 5%
+nominal; reaching a 1.5x bound takes 13 exceedances, or 260 calibration
+episodes. The single-digit conditional folds in the table above are worse
+still: at one exceedance the threshold is the largest value in the fold, which
+is not a calibration at all.
+
+The gating question for the complementary design is therefore not how to size
+its second stage but what calibration precision the deployment is required to
+demonstrate. Sized against the flat detector's existing standard it is already
+runnable; sized against a 1.5x bound it needs 477 healthy episodes per
+deployment and so does the flat detector. That choice is not the detector's to
+make, so the design stays unrun and the 5% budget stays as it is. The sizing
+derivation is in `conditional_calibration_sizing.md`.
 
 Recording this as the state: goal drift stays OPEN, the conditional design
-stays a live candidate with its blocker identified and quantified, and `c`
-stays rejected for global use.
+stays a live candidate with its real requirement quantified, and `c` stays
+rejected for global use.
