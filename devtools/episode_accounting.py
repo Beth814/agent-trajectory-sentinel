@@ -1,6 +1,6 @@
 """One derivation of every episode total this project quotes.
 
-Several totals circulate and they do not add up to each other: 3,878 committed
+Several totals circulate and they do not add up to each other: 4,022 committed
 episodes, 2,823 as of arXiv v1, 2,080 healthy, 2,557 collection attempts with
 553 discarded, 1,002 in the behavioural study, 874 in the grounding study,
 1,825 healthy in the false-positive claim. Each is correct for what it counts.
@@ -66,7 +66,7 @@ def _manifests(owned: bool = True) -> list[pathlib.Path]:
 
 def corpus_rows() -> list[dict]:
     """One row per corpus: accepted split by label, plus what was rejected."""
-    from devtools.claims_ledger import ADDED_AFTER_V1
+    from devtools.claims_ledger import V1_CORPORA
 
     rows = []
     for owned in (True, False):
@@ -80,7 +80,7 @@ def corpus_rows() -> list[dict]:
                 "corpus": m.parent.name,
                 "owned": owned,
                 "in_glob_scope": True,
-                "in_v1": owned and m.parent.name not in ADDED_AFTER_V1,
+                "in_v1": owned and m.parent.name in V1_CORPORA,
                 "healthy": len(entries) - injected,
                 "injected": injected,
                 "accepted": len(entries),

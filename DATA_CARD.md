@@ -5,15 +5,15 @@ manifests, so it cannot drift from what is committed.
 
 ## What is here
 
-- **3,878 agent episodes** across **34 corpora**, every
+- **4,022 agent episodes** across **35 corpora**, every
   trace committed as JSONL under `traces/`.
-- **1,903** of those episodes use *real* tools (arXiv, Wikipedia,
+- **2,045** of those episodes use *real* tools (arXiv, Wikipedia,
   web fetch, SQL, Python); the rest use a deterministic mock-tool suite.
 - Episodes per agent model:
 
 | model | episodes |
 |---|---:|
-| `qwen2.5:7b` | 2,945 |
+| `qwen2.5:7b` | 3,089 |
 | `llama3.1:8b` | 433 |
 | `qwen2.5:3b` | 357 |
 | `gemini-2.5-flash` | 143 |
@@ -61,6 +61,7 @@ uncertainty channel.
 | `autogen7b` | 148 | `qwen2.5:7b` | 60 | 88 | 88 | 0 | 4/5/8 | AutoGen loop at 7b -- the envelope finding confirmed causally |
 | `autogen7b_real` | 24 | `qwen2.5:7b` | 12 | 12 | 12 | 0 | 4/7/12 | Framework validation: AutoGen AssistantAgent x real tools (arXiv, Wikipedia, Open-Meteo) -- frozen esn_cusum_max[e,m] scored zero-shot, no retraining |
 | `autogen7b_real2` | 143 | `qwen2.5:7b` | 120 | 23 | 23 | 0 | 2/6/12 | AutoGen AssistantAgent x real tools, disjoint from autogen7b_real -- per-deployment healthy-only calibration, sized for a usable healthy fit |
+| `autogen7b_real3` | 144 | `qwen2.5:7b` | 120 | 24 | 24 | 0 | 2/5/12 | AutoGen AssistantAgent x real tools, recollected under the adapter that records the assistant text emitted beside a tool call -- autogen7b_real2 is kept unchanged as the pre-fix corpus, where no step carried that text |
 | `demo7b` | 113 | `qwen2.5:7b` | 113 | 0 | 0 | 113 | 11/12/16 | Live-demo calibration corpus, superseded by the task-scoped rebuild |
 | `demo7b_scoped` | 120 | `qwen2.5:7b` | 120 | 0 | 0 | 120 | 9/12/15 | Live-demo healthy null under the task-scoped toolset |
 | `demo_real` | 48 | `qwen2.5:7b` | 48 | 0 | 0 | 48 | 7/7/7 | Demo agent, real-tool suite -- FIXED task shape (all T=7); superseded as a healthy null by demo_real_varied |

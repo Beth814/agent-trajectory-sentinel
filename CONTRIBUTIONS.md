@@ -305,7 +305,7 @@ ordering reverses — see the README monitor table.
 
 ## 8. The artifact
 
-- **3,878 episodes across 34 corpora**, 1,903 using real tools, four agent models
+- **4,022 episodes across 35 corpora**, 2,045 using real tools, four agent models
   and three frameworks — public, loadable, and checksummed.
 - **A self-checking claim ledger**: every headline number carries its source
   artifact and regeneration command, and is recomputed from that file on every

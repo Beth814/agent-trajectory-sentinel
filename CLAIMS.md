@@ -22,11 +22,11 @@ Status at generation: **all claims verified**
 
 | claim | value | n | source artifact | regenerate with |
 |---|---|---|---|---|
-| Committed agent episodes (current) | `3878` | — | `traces/*/manifest.json` | `py -m devtools.claims_ledger --check` |
-| Committed corpora (current) | `34` | — | `traces/*/manifest.json` | `py -m devtools.claims_ledger --check` |
-| Episodes using real tools (current) | `1903` | — | `traces/*/manifest.json (content-derived: see real_tools.episode_used_real_tools)` | `py -m devtools.claims_ledger --check` |
+| Committed agent episodes (current) | `4022` | — | `traces/*/manifest.json` | `py -m devtools.claims_ledger --check` |
+| Committed corpora (current) | `35` | — | `traces/*/manifest.json` | `py -m devtools.claims_ledger --check` |
+| Episodes using real tools (current) | `2045` | — | `traces/*/manifest.json (content-derived: see real_tools.episode_used_real_tools)` | `py -m devtools.claims_ledger --check` |
 | Committed episodes outside the traces/*/ glob every total uses | `187` | — | `results/tables/episode_accounting.csv` | `py -m devtools.episode_accounting --check --write` |
-| Committed episodes of ours including the root corpus | `4065` | — | `results/tables/episode_accounting.csv` | `py -m devtools.episode_accounting --check --write` |
+| Committed episodes of ours including the root corpus | `4209` | — | `results/tables/episode_accounting.csv` | `py -m devtools.episode_accounting --check --write` |
 | Episodes scored by both the behavioural and grounding studies | `602` | — | `results/tables/episode_accounting.csv` | `py -m devtools.episode_accounting --check --write` |
 | Scored episodes with no committed episode behind them | `0` | — | `results/tables/episode_accounting.csv` | `py -m devtools.episode_accounting --check --write` |
 | Committed agent episodes as of arXiv v1 (commit 00c0673) | `2823` | — | `traces/*/manifest.json` | `py -m devtools.claims_ledger --check` |

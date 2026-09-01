@@ -365,3 +365,82 @@ def test_the_uncounted_root_corpus_stays_disclosed() -> None:
     notice = (REPO_ROOT / "traces" / "NOTICE_gemini.md").read_text("utf-8")
     assert str(n) in notice, (
         f"the Gemini notice does not cover the {n} root-corpus episodes")
+
+
+def test_a_corpus_collected_after_v1_cannot_change_the_v1_totals(
+        tmp_path, monkeypatch) -> None:
+    """The frozen snapshot is an allowlist, so new corpora cannot enter it.
+
+    This is the property the earlier exclusion list could not offer. Naming the
+    corpora collected AFTER v1 meant the v1 total absorbed every new corpus
+    until someone remembered to add its name, so the published figure was one
+    forgotten line away from moving. Here a corpus that did not exist at v1 is
+    invented, given an implausible size, and required to leave 2,823 alone.
+    """
+    import json
+
+    from devtools import claims_ledger
+
+    traces = tmp_path / "traces"
+    for manifest in claims_ledger._our_manifests():
+        target = traces / manifest.parent.name / "manifest.json"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(manifest.read_text("utf-8"), "utf-8")
+    monkeypatch.setattr(claims_ledger, "TRACES", traces)
+
+    before_v1 = claims_ledger._episode_total(v1_only=True)
+    before_head = claims_ledger._episode_total()
+    assert before_v1 == 2823, (
+        "the v1 snapshot is immutable and must reconstruct to exactly 2823; "
+        f"got {before_v1}")
+
+    # A name that sorts among the v1 corpora and starts with `real`, so it
+    # would be picked up by both the corpus glob and the v1 real-tool glob.
+    intruder = traces / "real_corpus_collected_after_v1" / "manifest.json"
+    intruder.parent.mkdir(parents=True)
+    intruder.write_text(json.dumps(
+        [{"episode_id": f"intruder-{i:03d}", "file": f"intruder-{i:03d}.jsonl",
+          "failure_class": None, "tau": None, "T": 4} for i in range(9999)]),
+        "utf-8")
+
+    assert claims_ledger._episode_total(v1_only=True) == before_v1, (
+        "a corpus collected after v1 changed the frozen v1 episode total")
+    assert claims_ledger._corpus_count(v1_only=True) == 25, (
+        "a corpus collected after v1 changed the frozen v1 corpus count")
+    assert claims_ledger._real_tool_episodes_v1() == 770, (
+        "a corpus collected after v1 changed the frozen v1 real-tool count")
+    assert claims_ledger._episode_total() == before_head + 9999, (
+        "the current-HEAD total must move when a corpus is added, or it is "
+        "not reporting the tree")
+
+
+def test_the_v1_allowlist_matches_the_tagged_release() -> None:
+    """`V1_CORPORA` is a claim about a tag, so it is checked against the tag."""
+    import json
+    import subprocess
+
+    from devtools import claims_ledger
+
+    listing = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", "00c0673", "traces/"],
+        capture_output=True, text=True, cwd=REPO_ROOT)
+    if listing.returncode != 0:
+        pytest.skip("the v1 commit is not present in this clone")
+    # `traces/manifest.json` at the root is not a corpus; the ledger's own
+    # glob is `*/manifest.json`, so match that depth exactly.
+    tagged = {parts[1] for parts in
+              (p.split("/") for p in listing.stdout.splitlines())
+              if len(parts) == 3 and parts[2] == "manifest.json"
+              and not parts[1].startswith("_")}
+    assert claims_ledger.V1_CORPORA == tagged, (
+        "V1_CORPORA disagrees with the tagged tree: "
+        f"missing {tagged - claims_ledger.V1_CORPORA}, "
+        f"extra {claims_ledger.V1_CORPORA - tagged}")
+
+    total = 0
+    for name in sorted(tagged):
+        blob = subprocess.run(
+            ["git", "show", f"00c0673:traces/{name}/manifest.json"],
+            capture_output=True, text=True, cwd=REPO_ROOT)
+        total += len(json.loads(blob.stdout))
+    assert total == 2823, f"the tagged tree holds {total} episodes, not 2823"

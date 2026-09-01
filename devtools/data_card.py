@@ -86,6 +86,10 @@ PURPOSE: dict[str, str] = {
     "autogen7b_real2": "AutoGen AssistantAgent x real tools, disjoint from "
                        "autogen7b_real -- per-deployment healthy-only "
                        "calibration, sized for a usable healthy fit",
+    "autogen7b_real3": "AutoGen AssistantAgent x real tools, recollected under "
+                       "the adapter that records the assistant text emitted "
+                       "beside a tool call -- autogen7b_real2 is kept unchanged "
+                       "as the pre-fix corpus, where no step carried that text",
 }
 
 

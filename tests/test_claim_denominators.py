@@ -107,12 +107,12 @@ def test_the_ledger_reports_both_the_current_corpus_and_the_v1_snapshot():
         assert "v1" in v1.claim and "current" in cur.claim, (
             "each claim must say which of the two it is")
 
-    # v1 is reconstructed by dropping the corpora collected since. If that set
-    # is wrong the v1 figure moves, and these claims are what catches it.
-    assert cl.ADDED_AFTER_V1, "the set naming post-v1 corpora is empty"
+    # v1 is reconstructed by keeping only the corpora it contained. If that
+    # allowlist is wrong the v1 figure moves, and these claims catch it.
+    assert cl.V1_CORPORA, "the set naming the v1 corpora is empty"
     names = {m.parent.name for m in cl._our_manifests()}
-    assert cl.ADDED_AFTER_V1 <= names, (
-        f"names a corpus that does not exist: {cl.ADDED_AFTER_V1 - names}")
+    assert cl.V1_CORPORA <= names, (
+        f"names a corpus that does not exist: {cl.V1_CORPORA - names}")
     assert by_id["corpus.episodes"].compute() > by_id["corpus.episodes_v1"].compute(), (
         "corpora have been added since v1, so the two counts must differ")
 

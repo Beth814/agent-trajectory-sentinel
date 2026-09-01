@@ -3,6 +3,7 @@ autogen,True,True,True,30,72,102,38,140
 autogen7b,True,True,True,60,88,148,22,170
 autogen7b_real,True,True,False,12,12,24,0,24
 autogen7b_real2,True,True,False,120,23,143,0,143
+autogen7b_real3,True,True,False,120,24,144,0,144
 demo7b,True,True,True,113,0,113,0,113
 demo7b_scoped,True,True,True,120,0,120,0,120
 demo_real,True,True,True,48,0,48,0,48

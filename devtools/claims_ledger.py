@@ -133,23 +133,29 @@ def _repair_rate(rung: str) -> float:
     return float(wrong[wrong.rung == rung].groupby("rep").now_correct.mean().mean())
 
 
-#: Corpora collected after the arXiv v1 snapshot (commit `00c0673`, tag
-#: `v1.4.0`). Naming them lets the ledger report BOTH totals rather than
-#: choosing one: the repository's current size, which is what DATA_CARD.md and
-#: the README describe, and the v1 size, which is what the submitted paper
-#: says and must keep saying. v1 is frozen by its tag, so nothing here needs to
-#: hold the working tree back to it; this set exists only to reconstruct the v1
-#: figure for comparison, and the `*_v1` claims below fail if it drifts.
-ADDED_AFTER_V1 = frozenset({
-    "real_research7b_long_drift",   # long-runway real goal_drift, conceptor arm
-    "demo_real_varied",             # rebuilt varied healthy null for demo_real
-    "demo_real_varied_ext",         # live arm, sized for the 5% FA budget
-    "langgraph7b_real",              # framework validation: LangGraph x real tools
-    "autogen7b_real",                # framework validation: AutoGen x real tools
-    "real_task_rollback",            # rollback/retry recovery source corpus
-    "langgraph7b_real2",             # per-deployment calibration: LangGraph
-    "autogen7b_real2",               # per-deployment calibration: AutoGen
-    "real_task_rollback_healthy",    # healthy null the served detector is calibrated on
+#: The corpora the arXiv v1 snapshot contains, read off the tagged tree
+#: (commit `00c0673`, tag `v1.4.0`). Membership is closed and this list is an
+#: allowlist by design. The earlier form named the corpora collected AFTER v1
+#: and reconstructed the snapshot by exclusion, which meant every newly
+#: collected corpus silently joined the frozen total until someone remembered
+#: to name it -- and a published figure cannot depend on being remembered. A
+#: corpus that did not exist at v1 cannot enter these counts whatever it is
+#: called, and `tests/test_release_artifacts.py` proves it cannot.
+#:
+#: Naming them lets the ledger report BOTH totals rather than choosing one:
+#: the repository's current size, which is what DATA_CARD.md and the README
+#: describe, and the v1 size, which is what the submitted paper says and must
+#: keep saying. v1 is frozen by its tag, so nothing here holds the working tree
+#: back to it; these names exist only to reconstruct the v1 figures, and the
+#: `*_v1` claims below fail if the tree's copy of a v1 corpus drifts.
+V1_CORPORA = frozenset({
+    "autogen", "autogen7b", "demo7b", "demo7b_scoped", "demo_real",
+    "langgraph", "langgraph7b", "ollama", "ollama7b", "ollama_llama8b",
+    "organic7b", "organic_demo7b", "organic_demo7b_cold", "organic_demo7b_ext",
+    "organic_demo7b_holdout", "organic_demo7b_provoked", "organic_llama8b",
+    "organic_llama8b_cold", "real", "real_gemini_long", "real_ollama7b",
+    "real_research3b", "real_research7b", "real_research7b_long",
+    "real_research7b_long_ext",
 })
 
 
@@ -161,15 +167,15 @@ def _our_manifests(v1_only: bool = False) -> list[pathlib.Path]:
     would restate someone else's episodes as ours.
 
     `v1_only` reconstructs the corpus as the submitted paper describes it, by
-    dropping everything in `ADDED_AFTER_V1`. The default is the current tree:
-    a corpus that is committed, checksummed and used by a study is part of the
+    keeping only what `V1_CORPORA` names. The default is the current tree: a
+    corpus that is committed, checksummed and used by a study is part of the
     evidence base, and the published v1 figure is preserved by the v1 tag
     rather than by keeping the working tree pinned to it.
     """
     keep = [m for m in sorted(TRACES.glob("*/manifest.json"))
             if not m.parent.name.startswith("_")]
     if v1_only:
-        keep = [m for m in keep if m.parent.name not in ADDED_AFTER_V1]
+        keep = [m for m in keep if m.parent.name in V1_CORPORA]
     return keep
 
 
@@ -218,7 +224,7 @@ def _real_tool_episodes_v1() -> int:
     """
     return sum(len(json.loads(m.read_text("utf-8")))
                for m in sorted(TRACES.glob("real*/manifest.json"))
-               if m.parent.name not in ADDED_AFTER_V1)
+               if m.parent.name in V1_CORPORA)
 
 
 def _real_traces(monitor: str, column: str) -> float:
@@ -773,13 +779,13 @@ def build() -> list[Claim]:
         # describes. Both are checked, so neither can drift into the other:
         # a doc describing the repository quotes the current figure, and a doc
         # describing the v1 submission quotes the `*_v1` one.
-        Claim("corpus.episodes", "Committed agent episodes (current)", 3878,
+        Claim("corpus.episodes", "Committed agent episodes (current)", 4022,
               "traces/*/manifest.json", "py -m devtools.claims_ledger --check",
               _episode_total, "Corpus"),
-        Claim("corpus.datasets", "Committed corpora (current)", 34,
+        Claim("corpus.datasets", "Committed corpora (current)", 35,
               "traces/*/manifest.json", "py -m devtools.claims_ledger --check",
               _corpus_count, "Corpus"),
-        Claim("corpus.real_tools", "Episodes using real tools (current)", 1903,
+        Claim("corpus.real_tools", "Episodes using real tools (current)", 2045,
               "traces/*/manifest.json (content-derived: see real_tools."
               "episode_used_real_tools)", "py -m devtools.claims_ledger --check",
               _real_tool_episodes, "Corpus"),
@@ -793,7 +799,7 @@ def build() -> list[Claim]:
               187, "results/tables/episode_accounting.csv", ACCOUNTING_CMD,
               lambda: _accounting("root_corpus_episodes"), "Corpus"),
         Claim("accounting.committed_all",
-              "Committed episodes of ours including the root corpus", 4065,
+              "Committed episodes of ours including the root corpus", 4209,
               "results/tables/episode_accounting.csv", ACCOUNTING_CMD,
               lambda: _accounting("committed_episodes_all"), "Corpus"),
         Claim("accounting.study_overlap",
