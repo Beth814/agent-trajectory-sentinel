@@ -197,6 +197,22 @@ IDX_REL_BURST = 70            # mean failure fraction over the last 3 steps
 
 CHANNEL_SLICES["r"] = REL_SLICE
 
+#: Declared semantics of a channel's DIMS, taken from the telemetry design
+#: above and nothing else. A channel appears here only if its own definition
+#: states both that every dim is bounded and that higher means more anomalous:
+#: c ("Every dim is causal, in [0, 1], and oriented so HIGHER = more
+#: anomalous") and r ("bounded in [0, 1], oriented so HIGHER = more
+#: anomalous"). g declares the orientation but not a bound, so it is absent --
+#: a monotone channel with no declared full scale gives no admissible unit.
+#:
+#: This is configuration, not evidence: it is read at fit time to decide how a
+#: channel whose healthy null is constant may still be scored, and it never
+#: consults a failure label, an onset, a corpus or an outcome.
+MONOTONE_BOUNDED_CHANNELS: dict[str, tuple[float, float]] = {
+    "c": (0.0, 1.0),
+    "r": (0.0, 1.0),
+}
+
 ACTION_TYPES: tuple[str, ...] = ("plan", "tool_call", "tool_result", "synthesis")
 
 FAILURE_CLASSES: tuple[str, ...] = (

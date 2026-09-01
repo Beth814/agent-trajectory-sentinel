@@ -35,7 +35,14 @@ from derail.monitor.esn import _WASHOUT
 
 #: Interpretable derived dims. The 32 semantic embedding dims are excluded:
 #: individually they carry no meaning, so a per-dim tail on them is noise.
-DERIVED_DIMS = tuple(range(32, 36)) + (40, 41, 42) + tuple(range(43, 71))
+#:
+#: The reliability dims [64, 71) are deliberately NOT here. They reach the
+#: detector through their own calibrated branch instead, because folding them
+#: in dilutes: on a corpus where tools never fail they are inert, and adding 21
+#: inert features shifts the CUSUM drift constant and costs realized goal drift
+#: (0.578 -> 0.554 on the long-drift corpus). Pass them explicitly to compare.
+DERIVED_DIMS = tuple(range(32, 36)) + (40, 41, 42) + tuple(range(43, 64))
+DERIVED_DIMS_WITH_RELIABILITY = DERIVED_DIMS + tuple(range(64, 71))
 WINDOW = 3
 
 

@@ -35,7 +35,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from derail.common import Episode, Standardizer
+from derail.common import (CHANNEL_SLICES, Episode,
+                           MONOTONE_BOUNDED_CHANNELS, Standardizer)
 from derail.evaluation.metrics import pick_threshold
 from derail.monitor.esn import _WASHOUT, ESNEnsembleMonitor, OnlineMonitor
 
@@ -48,6 +49,31 @@ STATISTICS = ("cusum", "rate", "increment")
 #: fusion, which is the exact defect this module exists to prevent. It marks
 #: the channel unusable instead; see `_dispersion`.
 _MIN_DISPERSION = 1e-9
+
+#: A channel whose healthy null is a single value carries no dispersion, but
+#: it is not therefore uninformative: if its own telemetry definition declares
+#: that every dim is bounded and that higher means more anomalous, then the
+#: healthy constant IS the floor and any departure above it is anomalous by
+#: construction. Such a channel is scored one-sided against a full scale taken
+#: from that declaration rather than from the data.
+#:
+#: The cap keeps a bounded channel bounded: fully saturated telemetry reads as
+#: _DEGENERATE_CAP on the common scale, which is beyond any plausible healthy
+#: z-score yet finite, so a degenerate channel can win a fusion but cannot make
+#: every other channel irrelevant. Raising it toward infinity would recreate
+#: exactly the divide-by-a-floor defect this module exists to prevent.
+_DEGENERATE_CAP = 8.0
+
+#: Departures below this fraction of the full scale read as zero. The healthy
+#: constant is only constant to within `_MIN_DISPERSION`, and without a
+#: deadband a benign 1e-12 wobble would score as a real departure.
+_DEGENERATE_DEADBAND = 1e-6
+
+#: The full scale is the statistic's response to ONE maximally anomalous step,
+#: measured against the same probe held at the declared floor. A sustained
+#: saturation run was tried first and is the wrong unit: it drives the CUSUM
+#: far beyond anything a real episode produces, so genuine departures map to a
+#: sliver of the cap and the channel can never win a fusion.
 
 def _dispersion(arr: np.ndarray) -> tuple[float, str]:
     """Robust spread of a healthy null, with one fallback.
@@ -96,17 +122,37 @@ class ChannelScale:
     dispersion: float
     n_steps: int
     estimator: str = "iqr"
+    #: "scaled"    the ordinary case: centre and divide by the healthy spread.
+    #: "one_sided" healthy-constant, but the channel declares bounded monotone
+    #:             dims, so it is scored against a declared full scale.
+    #: "excluded"  healthy-constant with no admissible full scale.
+    mode: str = "scaled"
+    baseline: float = 0.0     # one_sided: the healthy constant, ceiling of null
+    full_scale: float = 0.0   # one_sided: statistic at declared saturation
 
     @property
     def usable(self) -> bool:
-        """Can this channel be placed on the common scale at all?"""
+        """Can this channel contribute to the fusion at all?"""
+        if self.mode == "one_sided":
+            return self.full_scale > _MIN_DISPERSION
+        if self.mode == "excluded":
+            return False
         return self.dispersion > _MIN_DISPERSION
 
     def to_common_scale(self, value: float) -> float:
         if not self.usable:
             raise ValueError(
-                "channel has no healthy dispersion to normalize against; it "
-                "must be excluded from the fusion, not divided by a floor")
+                "channel has no healthy dispersion to normalize against and "
+                "declares no bounded monotone semantics; it must be excluded "
+                "from the fusion, not divided by a floor")
+        if self.mode == "one_sided":
+            excess = value - self.baseline
+            if excess <= _DEGENERATE_DEADBAND * max(self.full_scale, 1e-12):
+                return 0.0
+            # Saturating, so the declared full scale maps to the cap and no
+            # larger reading can exceed it.
+            return float(_DEGENERATE_CAP
+                         * (1.0 - np.exp(-excess / self.full_scale)))
         return (value - self.median) / self.dispersion
 
 
@@ -166,22 +212,85 @@ class NormalizedFusionMonitor(OnlineMonitor):
         for ep in usable:
             for index, values in enumerate(self._raw_channel_streams(ep)):
                 per_channel[index].extend(values[_WASHOUT:])
+        width = usable[0].X.shape[1]
         scales = []
-        for values in per_channel:
+        for index, values in enumerate(per_channel):
             arr = np.asarray(values, dtype=float)
             dispersion, estimator = _dispersion(arr)
+            if dispersion > _MIN_DISPERSION:
+                scales.append(ChannelScale(median=float(np.median(arr)),
+                                           dispersion=dispersion,
+                                           n_steps=int(arr.size),
+                                           estimator=estimator))
+                continue
+            # Healthy-constant. Salvageable only if the channel's own
+            # definition declares bounded monotone dims; the baseline is the
+            # top of the observed healthy null, so every healthy step this
+            # fold contains scores exactly zero.
+            channel = self.channels[index]
+            full = self._declared_full_scale(channel, width)
+            if full is None or full <= _MIN_DISPERSION:
+                scales.append(ChannelScale(median=float(np.median(arr)),
+                                           dispersion=dispersion,
+                                           n_steps=int(arr.size),
+                                           estimator=estimator,
+                                           mode="excluded"))
+                continue
             scales.append(ChannelScale(median=float(np.median(arr)),
                                        dispersion=dispersion,
                                        n_steps=int(arr.size),
-                                       estimator=estimator))
+                                       estimator=estimator,
+                                       mode="one_sided",
+                                       baseline=float(arr.max()),
+                                       full_scale=float(full)))
         if not any(scale.usable for scale in scales):
             raise ValueError(
                 f"{self.name}: every channel's healthy null is constant on "
-                f"the scale fold, so none can be normalized. This is a "
-                f"telemetry or fold-size problem, not something to floor "
-                f"away -- the fusion would be decided by arithmetic rather "
-                f"than evidence.")
+                f"the scale fold and none declares bounded monotone dims, so "
+                f"none can be normalized. This is a telemetry or fold-size "
+                f"problem, not something to floor away -- the fusion would be "
+                f"decided by arithmetic rather than evidence.")
         self.scales = scales
+
+    def _declared_full_scale(self, channel: str, width: int) -> float | None:
+        """The statistic this channel would read at its declared saturation.
+
+        Configuration only: the channel's dims are driven to the top of the
+        range its own telemetry definition declares, and the resulting
+        statistic is the unit a departure is measured in. No corpus, no label
+        and no outcome enters it. Channels with no declared bound return None
+        and stay excluded rather than being given an invented scale.
+        """
+        bounds = MONOTONE_BOUNDED_CHANNELS.get(channel)
+        if bounds is None or channel not in CHANNEL_SLICES:
+            return None
+        sub = self.subs[self.channels.index(channel)]
+        sl = CHANNEL_SLICES[channel]
+        if sl.stop > width:
+            return None
+        low = np.zeros(width, dtype=float)
+        low[sl] = bounds[0]
+        high = np.zeros(width, dtype=float)
+        high[sl] = bounds[1]
+
+        def run(last: np.ndarray) -> float:
+            sub.start_episode()
+            value = 0.0
+            for step in range(_WASHOUT + 1):
+                probe = last if step == _WASHOUT else low
+                cusum = sub.score_step(probe)
+                value = (cusum if self.statistic == "cusum"
+                         else cusum / max(1, step - _WASHOUT + 1)
+                         if self.statistic == "rate"
+                         else sub.last_raw_increment)
+            return float(value)
+
+        try:
+            return run(high) - run(low)
+        finally:
+            # The probe must leave no trace: scoring always begins with
+            # start_episode, and this restores that contract explicitly.
+            sub.start_episode()
 
     @property
     def active_channels(self) -> tuple[str, ...]:
