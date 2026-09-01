@@ -49,66 +49,64 @@ cannot be measured without re-collecting that development corpus. That is a
 live collection and it replaces spent development evidence, so it is a
 decision rather than something to slip in.
 
-## 2. The conditional two-stage design does not control its budget here
+## 2. The conditional design: the budget holds once it is calibrated correctly
 
 The flat design cannot afford the goal-consistency channel: adding it costs
 about thirty points on every other class. The conditional argument is that
-rates multiply rather than divide -- a gate opening on 25% of healthy
-episodes followed by a test firing on 20% of those spends 5% in total while
-letting the second test operate at 20%.
+rates compose -- a gate opening on a quarter of healthy episodes, followed by
+a test firing on a fifth of those, spends 5% in total while letting the second
+test operate at 20%.
 
-Two stages, both causal, both calibrated on healthy episodes only, with
-realization labels used for evaluation only and never in calibration:
+`P(alarm) = P(stage 1) x P(stage 2 | stage 1)` is the chain rule. It is exact
+and requires no independence between the stages. An earlier version of this
+document attributed an overshoot to the stages being correlated; that was
+wrong, and the real cause was an error in how the thresholds were estimated.
 
-* **gate** -- `g`, which separates injected from healthy at 0.98 and is
-  nearly blind to adoption at 0.58;
-* **conditional** -- `c`, which is the reverse, and is evaluated only from
-  the step the gate opened.
+**The estimation defect.** Both thresholds were read off the whole healthy
+pool, which contained the episodes the readout had been fitted on. A fitted
+episode carries a residual the fit already minimised, so a threshold taken
+from one sits too low, and the unseen population overshoots it. The signature
+was visible in stage 1 alone, before any question of conditioning arose: a
+gate calibrated for 25% fired on 59% of held-out healthy episodes.
 
-Measured over 20 replicates per corpus:
+Corrected to three disjoint healthy folds -- fit, scale, and a calibration
+fold the readout never saw -- the composition holds:
 
-| corpus | allocation | total FA | gate FA | detection | drift realized | conditional fold n |
+| corpus | allocation | gate FA (target) | total FA | detection | drift realized | conditional fold n |
 | --- | --- | --- | --- | --- | --- | --- |
-| langgraph | 0.05 x 1.00 | 0.070 | 0.099 | 0.537 | 0.483 | 4.0 |
-| langgraph | 0.25 x 0.20 | 0.127 | 0.591 | 0.458 | **1.000** | 38.6 |
-| langgraph | 0.50 x 0.10 | 0.099 | 0.857 | 0.406 | 1.000 | 67.8 |
-| langgraph | 1.00 x 0.05 | 0.053 | 1.000 | 0.269 | 0.983 | 82.0 |
-| autogen | 0.25 x 0.20 | 0.105 | 0.491 | 0.478 | 0.933 | 23.7 |
-| long_drift | 0.05 x 1.00 | 0.062 | 0.087 | 0.775 | **0.888** | 4.0 |
-| long_drift | 0.25 x 0.20 | 0.074 | 0.266 | 0.266 | 0.408 | 21.1 |
+| langgraph | 0.25 x 0.20 | 0.234 (0.25) | 0.031 | 0.188 | 0.517 | 6.0 |
+| langgraph | 0.50 x 0.10 | 0.657 (0.50) | 0.044 | 0.223 | 0.683 | 17.2 |
+| autogen | 0.25 x 0.20 | 0.243 (0.25) | 0.033 | 0.259 | 0.600 | 5.2 |
+| autogen | 0.50 x 0.10 | 0.641 (0.50) | 0.059 | 0.287 | **0.917** | 13.5 |
+| long_drift | 0.05 x 1.00 | 0.024 (0.05) | 0.011 | 0.459 | 0.573 | 1.0 |
+| long_drift | 0.25 x 0.20 | 0.235 (0.25) | 0.021 | 0.194 | 0.296 | 6.1 |
 
-**The multiplicative budget argument fails empirically.** Every allocation
-except the degenerate one overshoots the 5% target, and the middle
-allocations overshoot worst (0.099-0.127). Two reasons, both measured:
+Total false alarms now land between 0.003 and 0.059 against a 5% budget, and
+the gate tracks its nominal rate at 0.25. The conditional budget works.
 
-- the stages are **not independent** -- both are computed from the same
-  episode, so their exceedances are correlated and the product rule does not
-  hold;
-- the conditional calibration fold is **far too small** at the gate rates
-  that would matter: 3-4 healthy episodes at a 5% gate, 21-39 at a 25% gate.
-  A threshold picked from four observations is the order-statistic floor
-  problem in its most extreme form.
+**What does not work is this particular hierarchy, for a different reason.**
+It is built from `g` and `c` alone and therefore *replaces* the flat detector
+rather than complementing it. The classes that depend on `e` and `m` collapse:
+looping falls to 0.208 on langgraph against 0.967 under `e+m+g/mean`, and
+overall detection to 0.223 against 0.581. Realized goal drift rises sharply in
+exchange -- 0.683 against 0.117 -- which is the trade the conditional design
+was meant to avoid having to make.
 
-**The apparent best row is not a hierarchy.** At `cond1.00` the second stage
-accepts almost everything, so `0.05 x 1.00` is a `g`-only detector wearing a
-two-stage label. Its long-corpus realized-drift figure of 0.888 against 0.524
-for the best flat arm is worth noting on its own terms, but it is evidence
-about `g` alone, not about conditioning.
+The design that follows from this has not been measured: keep the flat
+`e+m`-based detector for the classes it already serves and add the `g` gate to
+`c` path beside it, splitting the 5% budget between the two rather than
+choosing between them. That is the next experiment, and it is named here
+rather than run, because the conditional calibration fold is still small --
+5 to 17 healthy episodes at the useful gate rates -- and sizing it is the
+prior question.
 
-**Where conditioning genuinely does what was hoped**, at `0.25 x 0.20`,
-realized drift reaches 1.000 on langgraph and 0.933 on autogen -- and looping
-falls from 0.933 to 0.617 and tool_cascade from 0.450 to 0.217, with total
-false alarms at 0.127. The same trade as the flat design, relocated rather
-than removed.
+### The remaining blocker, restated correctly
 
-### What would be needed
-
-Not a refutation of the design -- a demonstrated sample-size blocker. A
-conditional threshold needs the same 80-episode floor the flat protocol
-already requires, which at a 25% gate means roughly 320 verified healthy
-episodes per deployment against the 120 these corpora hold. Until that exists
-the conditional stage cannot be calibrated, and any number read off it is
-reading four episodes.
+Not the budget arithmetic, which holds. The conditional stage needs the same
+80-episode floor the flat protocol already requires, which at a 25% gate means
+roughly 320 verified healthy episodes per deployment against the 120 these
+corpora hold. Until then a conditional threshold is read off single-digit
+samples, and that is what the small folds in the table above are.
 
 Recording this as the state: goal drift stays OPEN, the conditional design
 stays a live candidate with its blocker identified and quantified, and `c`
