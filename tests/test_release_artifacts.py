@@ -369,14 +369,7 @@ def test_the_uncounted_root_corpus_stays_disclosed() -> None:
 
 def test_a_corpus_collected_after_v1_cannot_change_the_v1_totals(
         tmp_path, monkeypatch) -> None:
-    """The frozen snapshot is an allowlist, so new corpora cannot enter it.
-
-    This is the property the earlier exclusion list could not offer. Naming the
-    corpora collected AFTER v1 meant the v1 total absorbed every new corpus
-    until someone remembered to add its name, so the published figure was one
-    forgotten line away from moving. Here a corpus that did not exist at v1 is
-    invented, given an implausible size, and required to leave 2,823 alone.
-    """
+    """A corpus that did not exist at v1 must leave the v1 totals alone."""
     import json
 
     from devtools import claims_ledger
@@ -394,8 +387,7 @@ def test_a_corpus_collected_after_v1_cannot_change_the_v1_totals(
         "the v1 snapshot is immutable and must reconstruct to exactly 2823; "
         f"got {before_v1}")
 
-    # A name that sorts among the v1 corpora and starts with `real`, so it
-    # would be picked up by both the corpus glob and the v1 real-tool glob.
+    # Named to match both the corpus glob and the v1 real-tool glob.
     intruder = traces / "real_corpus_collected_after_v1" / "manifest.json"
     intruder.parent.mkdir(parents=True)
     intruder.write_text(json.dumps(
@@ -426,8 +418,7 @@ def test_the_v1_allowlist_matches_the_tagged_release() -> None:
         capture_output=True, text=True, cwd=REPO_ROOT)
     if listing.returncode != 0:
         pytest.skip("the v1 commit is not present in this clone")
-    # `traces/manifest.json` at the root is not a corpus; the ledger's own
-    # glob is `*/manifest.json`, so match that depth exactly.
+    # `traces/manifest.json` is not a corpus; match the ledger's glob depth.
     tagged = {parts[1] for parts in
               (p.split("/") for p in listing.stdout.splitlines())
               if len(parts) == 3 and parts[2] == "manifest.json"

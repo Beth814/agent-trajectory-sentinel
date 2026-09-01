@@ -85,6 +85,15 @@ class FusionProtocol:
     min_scale_episodes: int = 40
     min_threshold_episodes: int = 80
 
+    #: Final claim only; the floors above govern development. `fa_budget` is a
+    #: nominal rate whose median realization is 5%, so "at most 5%" needs the
+    #: largest k with BetaInv(confidence; k, n+1-k) <= fa_budget. At n = 640
+    #: that is k = 23: nominal 3.6% under a guaranteed 4.87%.
+    #: See results/conditional_calibration_sizing.md.
+    final_calibration_rule: str = "distribution_free_one_sided_tolerance_bound"
+    final_calibration_confidence: float = 0.95
+    min_final_calibration_episodes: int = 640
+
     #: Untouched, evaluation only. At 300 an
     #: observed 2% false-alarm rate still bounds below 5% (exact 95% CI
     #: 0.007-0.043); at 24 even a zero observation bounds only at 14.2%.

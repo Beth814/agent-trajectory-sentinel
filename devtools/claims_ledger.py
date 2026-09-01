@@ -133,21 +133,10 @@ def _repair_rate(rung: str) -> float:
     return float(wrong[wrong.rung == rung].groupby("rep").now_correct.mean().mean())
 
 
-#: The corpora the arXiv v1 snapshot contains, read off the tagged tree
-#: (commit `00c0673`, tag `v1.4.0`). Membership is closed and this list is an
-#: allowlist by design. The earlier form named the corpora collected AFTER v1
-#: and reconstructed the snapshot by exclusion, which meant every newly
-#: collected corpus silently joined the frozen total until someone remembered
-#: to name it -- and a published figure cannot depend on being remembered. A
-#: corpus that did not exist at v1 cannot enter these counts whatever it is
-#: called, and `tests/test_release_artifacts.py` proves it cannot.
-#:
-#: Naming them lets the ledger report BOTH totals rather than choosing one:
-#: the repository's current size, which is what DATA_CARD.md and the README
-#: describe, and the v1 size, which is what the submitted paper says and must
-#: keep saying. v1 is frozen by its tag, so nothing here holds the working tree
-#: back to it; these names exist only to reconstruct the v1 figures, and the
-#: `*_v1` claims below fail if the tree's copy of a v1 corpus drifts.
+#: The corpora in the arXiv v1 tree (commit `00c0673`, tag `v1.4.0`). An
+#: allowlist, not an exclusion list: a corpus that did not exist at v1 cannot
+#: enter these counts whatever it is called. Lets the ledger report both the
+#: current tree and the frozen v1 figures the paper cites.
 V1_CORPORA = frozenset({
     "autogen", "autogen7b", "demo7b", "demo7b_scoped", "demo_real",
     "langgraph", "langgraph7b", "ollama", "ollama7b", "ollama_llama8b",
@@ -166,11 +155,8 @@ def _our_manifests(v1_only: bool = False) -> list[pathlib.Path]:
     or a corpus imported from another project (traces/_aftraj). Counting those
     would restate someone else's episodes as ours.
 
-    `v1_only` reconstructs the corpus as the submitted paper describes it, by
-    keeping only what `V1_CORPORA` names. The default is the current tree: a
-    corpus that is committed, checksummed and used by a study is part of the
-    evidence base, and the published v1 figure is preserved by the v1 tag
-    rather than by keeping the working tree pinned to it.
+    `v1_only` keeps only what `V1_CORPORA` names; the default is the whole
+    current tree.
     """
     keep = [m for m in sorted(TRACES.glob("*/manifest.json"))
             if not m.parent.name.startswith("_")]

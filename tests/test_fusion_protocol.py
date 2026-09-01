@@ -125,3 +125,44 @@ def test_the_deferred_channel_claim_matches_its_evidence():
         assert matched["det_goal_drift"] > base["det_goal_drift"], (
             f"{dataset}: the goal channel adds no drift detection even at a "
             f"matched threshold, so there is nothing to defer")
+
+
+def test_the_final_calibration_floor_delivers_the_bound_it_claims() -> None:
+    """Recompute the bound rather than trusting the predeclared number."""
+    from scipy import stats
+
+    n = PROTOCOL.min_final_calibration_episodes
+    conf = PROTOCOL.final_calibration_confidence
+    budget = PROTOCOL.fa_budget
+
+    qualifying = [k for k in range(1, n + 1)
+                  if stats.beta.ppf(conf, k, n + 1 - k) <= budget]
+    assert qualifying, (
+        f"no rank qualifies at n={n}: the floor cannot deliver a "
+        f"{budget:.0%} bound at {conf:.0%} confidence")
+
+    k = max(qualifying)
+    assert stats.beta.ppf(conf, k, n + 1 - k) <= budget
+    # And the next rank up must fail, or the floor is not the largest usable k.
+    assert stats.beta.ppf(conf, k + 1, n - k) > budget
+
+    nominal = k / (n + 1)
+    assert nominal / budget >= 0.70, (
+        f"the floor keeps only {nominal / budget:.0%} of the budget usable; "
+        "a larger fold was predeclared for a reason")
+
+
+def test_the_development_floor_cannot_support_the_final_claim() -> None:
+    """The development floor must not be mistaken for the final one."""
+    from scipy import stats
+
+    n = PROTOCOL.min_threshold_episodes
+    conf = PROTOCOL.final_calibration_confidence
+    budget = PROTOCOL.fa_budget
+
+    assert PROTOCOL.min_final_calibration_episodes > n
+    nominal_rank = int(budget * n)
+    realized_upper = stats.beta.ppf(conf, nominal_rank, n + 1 - nominal_rank)
+    assert realized_upper > budget, (
+        "if the development floor already bounded the budget there would be "
+        "no reason to predeclare a larger one")
