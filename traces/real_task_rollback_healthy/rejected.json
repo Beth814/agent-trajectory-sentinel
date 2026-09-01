@@ -71,5 +71,41 @@
     "facts": {
       "T": 2
     }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-60",
+    "requested_class": null,
+    "reason": "too short: T=2 < 4",
+    "facts": {
+      "T": 2
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-101",
+    "requested_class": null,
+    "reason": "too short: T=3 < 4",
+    "facts": {
+      "T": 3
+    }
+  },
+  {
+    "episode_id": "rollback-arxiv_paper_search-healthy-96",
+    "requested_class": null,
+    "reason": "excluded from the admitted healthy set: the first valid attempt failed the independent task verifier. A later retry of the same slot passed, but a successful retry does not convert a slot whose valid attempt failed into a healthy negative.",
+    "facts": {
+      "attempt_1": {
+        "outcome": "rejected",
+        "reason": "task did not succeed: not a healthy episode",
+        "environment": "tools healthy; 3 successful tool calls recorded"
+      },
+      "attempt_2": {
+        "outcome": "verifier passed",
+        "T": 6,
+        "success": true,
+        "trace_sha256": "16a22f13b5346a0bef9fd429ed5ce237763d29b6ded5fbffb941641fb89c9a72"
+      },
+      "disposition": "trace file and both cassettes retained on disk as evidence; removed from manifest.json so no fold, scale or threshold can consume it",
+      "slot_not_replaced": true
+    }
   }
 ]
