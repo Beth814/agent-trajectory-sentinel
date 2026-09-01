@@ -165,3 +165,107 @@ def test_looping_injection_is_flagged_as_an_error(tmp_path, framework):
     assert all(e["is_error"] for e in events), (
         f"{framework}: looping injection not flagged is_error -- "
         f"text-pattern matching missed it")
+
+
+# ------------------------------- the two adapters must record the same thing
+def test_autogen_keeps_the_text_the_model_emits_beside_a_tool_call():
+    """AutoGen delivers that text as a separate ThoughtEvent.
+
+    LangGraph puts the same content in `msg.content` on the step carrying the
+    calls, so an adapter that ignores ThoughtEvent records less of identical
+    agent behaviour under one framework than the other. Measured on the
+    committed corpora before this was handled: 202 of 838 LangGraph tool-call
+    steps carried assistant text, against 0 of 764 under AutoGen.
+    """
+    src = inspect.getsource(frameworks.run_autogen_episode)
+    assert 'etype == "ThoughtEvent"' in src, (
+        "ThoughtEvent is dropped, so text the model emitted is not recorded")
+    request_branch = src.split('if etype == "ToolCallRequestEvent":')[1]
+    assert '"text": thought' in request_branch, (
+        "the buffered thought must land on the step that carries the calls")
+
+
+def test_a_thought_does_not_become_a_step_of_its_own():
+    """It is the same agent turn.
+
+    Emitting a separate step would inflate trajectory length and hand the
+    detector scoring opportunities the agent never actually took -- which is
+    manufacturing runway, not observing it.
+    """
+    src = inspect.getsource(frameworks.run_autogen_episode)
+    thought_branch = src.split('if etype == "ThoughtEvent":')[1]
+    thought_branch = thought_branch.split("if etype ==")[0]
+    assert "steps.append" not in thought_branch
+    assert "continue" in thought_branch
+
+
+def test_a_thought_is_cleared_so_it_cannot_leak_onto_a_later_step():
+    """A buffered thought belongs to the next step only. Without a reset it
+    would be re-prefixed onto every subsequent tool call in the episode."""
+    src = inspect.getsource(frameworks.run_autogen_episode)
+    request_branch = src.split('if etype == "ToolCallRequestEvent":')[1]
+    request_branch = request_branch.split('elif etype ==')[0]
+    assert 'thought = ""' in request_branch
+    text_branch = src.split('elif etype == "TextMessage"')[1]
+    assert 'thought = ""' in text_branch
+
+
+# ------------------------------------------- the thought arrives before its step
+def test_a_thought_precedes_the_step_it_is_attached_to():
+    """Causality, from AutoGen's own event order.
+
+    Observed live, with a tool returning errors so the model comments on them:
+
+        ToolCallExecutionEvent   <- previous step completes
+        ThoughtEvent             <- text from the NEXT model call
+        ToolCallRequestEvent     <- the step that text belongs to is created
+        ToolCallExecutionEvent   <- that step's results arrive
+
+    The thought and the tool call come out of the SAME model call, and both
+    are known before the step exists. So attaching the thought is not a
+    retroactive edit of something already scored, and it cannot carry the
+    step's own tool result, which has not been requested yet.
+    """
+    src = inspect.getsource(frameworks.run_autogen_episode)
+    request_branch = src.split('if etype == "ToolCallRequestEvent":')[1]
+    request_branch = request_branch.split('elif etype ==')[0]
+    # The thought is consumed where the step is CREATED, never where results
+    # are folded in.
+    assert '"text": thought' in request_branch
+    exec_branch = src.split('elif etype == "ToolCallExecutionEvent":')[1]
+    exec_branch = exec_branch.split('elif etype == "TextMessage"')[0]
+    assert "thought" not in exec_branch, (
+        "the execution branch must not touch the thought: that would attach "
+        "text to a step after its results are known")
+
+
+def test_the_execution_branch_only_appends_to_the_step_it_completes():
+    """No already-scored step may be reopened.
+
+    The results branch may only extend `steps[-1]` -- the step whose calls it
+    is completing. Reaching further back would rewrite a step a streaming
+    monitor has already scored.
+    """
+    src = inspect.getsource(frameworks.run_autogen_episode)
+    exec_branch = src.split('elif etype == "ToolCallExecutionEvent":')[1]
+    exec_branch = exec_branch.split('elif etype == "TextMessage"')[0]
+    for index in ("steps[-2]", "steps[0]", "steps[:-1]"):
+        assert index not in exec_branch
+    assert "steps[-1]" in exec_branch
+
+
+@pytest.mark.parametrize("runner", ["langgraph", "autogen"])
+def test_both_adapters_put_agent_text_and_tool_bits_in_one_step(runner):
+    """The two frameworks must represent one agent turn the same way.
+
+    LangGraph seeds the step with `msg.content`; AutoGen seeds it with the
+    buffered thought. Both then append the rendered tool bits to that same
+    step. Without this the semantic channel sees a systematically emptier
+    step under one framework for identical agent behaviour.
+    """
+    fn = {"langgraph": frameworks.run_langgraph_episode,
+          "autogen": frameworks.run_autogen_episode}[runner]
+    src = inspect.getsource(fn)
+    seed = '"text": str(msg.content or "")' if runner == "langgraph" else '"text": thought'
+    assert seed in src
+    assert 'steps[-1]["text"] = (steps[-1]["text"] + " " + " ".join(bits)).strip()' in src
