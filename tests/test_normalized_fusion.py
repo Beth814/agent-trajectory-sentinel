@@ -14,6 +14,7 @@ import pytest
 from derail.common import Standardizer
 from derail.monitor.esn import _WASHOUT
 from derail.monitor.normalized_fusion import (STATISTICS, ChannelScale,
+                                              _dispersion,
                                               NormalizedFusionMonitor,
                                               pick_fused_threshold, scoreable)
 from derail.telemetry.adapter import episode_from_trace
@@ -165,8 +166,69 @@ def test_the_calibration_path_cannot_receive_a_label():
                 f"must be label-free")
 
 
-def test_a_dispersionless_channel_cannot_dominate():
+def test_a_dispersionless_channel_is_excluded_not_floored():
     """A channel whose healthy null never moves has no scale to divide by.
-    Without the floor it would return infinity and win every fusion."""
+
+    Dividing by a small floor instead of saying so is what this guards: at a
+    1e-9 floor the channel is amplified by a billion and wins every fusion,
+    which is the exact defect normalization exists to prevent. It must be
+    refused, and the refusal has to be loud.
+    """
     scale = ChannelScale(median=0.0, dispersion=0.0, n_steps=10)
-    assert np.isfinite(scale.to_common_scale(1.0))
+    assert not scale.usable
+    with pytest.raises(ValueError, match="excluded from the fusion"):
+        scale.to_common_scale(1.0)
+
+
+def test_the_dispersion_falls_back_rather_than_dividing_by_a_floor():
+    """IQR, then standard deviation, then refuse."""
+    assert _dispersion(np.array([1.0, 2.0, 3.0, 4.0]))[1] == "iqr"
+    # Middle two quartiles coincide, tails move: the IQR is blind, sd is not.
+    assert _dispersion(np.array([0.0] * 8 + [5.0, -5.0]))[1] == "sd"
+    assert _dispersion(np.zeros(10)) == (0.0, "degenerate")
+
+
+def test_there_is_no_unreachable_mad_rung():
+    """A zero IQR puts at least half the points on the median, which forces
+    the MAD to zero too -- so a MAD rung between them could never fire, and
+    shipping one would be dead code pretending to be a safeguard."""
+    rng = np.random.default_rng(0)
+    for _ in range(200):
+        arr = rng.choice([0.0, 1.0, 2.0, 3.0], size=rng.integers(4, 40),
+                         p=[0.7, 0.1, 0.1, 0.1])
+        q25, q75 = np.quantile(arr, [0.25, 0.75])
+        if float(q75 - q25) <= 1e-9:
+            mad = float(np.median(np.abs(arr - np.median(arr))))
+            assert mad <= 1e-9
+
+
+def test_a_constant_channel_does_not_silently_halve_the_fusion():
+    """An excluded channel is reported, not quietly dropped.
+
+    A two-channel fusion that has become one channel must not still look like
+    a two-channel one, or the artifact records a fusion that never happened.
+    """
+    healthy = [_episode(s) for s in range(6)]
+    monitor = NormalizedFusionMonitor(Standardizer().fit(healthy),
+                                      channels=("e", "m"), seed=0)
+    monitor.fit(healthy)
+    monitor.fit_channel_scales(healthy)
+    monitor.scales = [monitor.scales[0],
+                      ChannelScale(median=0.0, dispersion=0.0, n_steps=1)]
+
+    assert monitor.active_channels == ("e",)
+    monitor.start_episode()
+    value = monitor.score_step(healthy[0].X[0])
+    assert np.isfinite(value)
+    assert monitor.last_winning_channel == "e"
+
+
+def test_every_channel_constant_is_an_error_not_a_floor():
+    """If nothing can be normalized the fusion is arithmetic, not evidence."""
+    healthy = [_episode(s) for s in range(6)]
+    monitor = NormalizedFusionMonitor(Standardizer().fit(healthy),
+                                      channels=("e", "m"), seed=0)
+    monitor.fit(healthy)
+    constant = [ChannelScale(median=0.0, dispersion=0.0, n_steps=1)] * 2
+    monitor.scales = constant
+    assert monitor.active_channels == ()

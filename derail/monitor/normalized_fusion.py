@@ -42,10 +42,40 @@ from derail.monitor.esn import _WASHOUT, ESNEnsembleMonitor, OnlineMonitor
 #: Per-channel causal statistics this monitor can fuse.
 STATISTICS = ("cusum", "rate", "increment")
 
-#: Dispersion floor. A channel whose healthy null is a single repeated value
-#: has no scale to divide by; without this it would explode to infinity and
-#: win every fusion for a reason that has nothing to do with evidence.
+#: Dispersion floor. Below this a channel's healthy null is a single repeated
+#: value and there is no scale to divide by. Dividing by the floor itself is
+#: NOT the answer -- it amplifies that channel by 1e9 and hands it every
+#: fusion, which is the exact defect this module exists to prevent. It marks
+#: the channel unusable instead; see `_dispersion`.
 _MIN_DISPERSION = 1e-9
+
+def _dispersion(arr: np.ndarray) -> tuple[float, str]:
+    """Robust spread of a healthy null, with one fallback.
+
+    The IQR is the first choice and is right whenever the null actually
+    varies. It degenerates to exactly zero when the middle two quartiles
+    collapse onto one value, which is common here rather than exotic: these
+    episodes are short, so a quiet channel's CUSUM sits at 0 for most of the
+    steps the scale fold contains.
+
+    The fallback is the standard deviation, which still sees a null whose
+    middle is flat but whose tails move. There is deliberately no median
+    absolute deviation rung between them: a zero IQR means at least half the
+    points already sit on the median, which forces the MAD to zero as well,
+    so it could never fire.
+
+    A channel flat under both is genuinely constant on healthy data. It
+    carries no scale, so it cannot be put on a common one, and the honest
+    thing is to say so -- not to divide by a floor and let it win.
+    """
+    q25, q75 = np.quantile(arr, [0.25, 0.75])
+    iqr = float(q75 - q25)
+    if iqr > _MIN_DISPERSION:
+        return iqr, "iqr"
+    sd = float(arr.std())
+    if sd > _MIN_DISPERSION:
+        return sd, "sd"
+    return 0.0, "degenerate"
 
 
 @dataclass(frozen=True)
@@ -56,14 +86,28 @@ class ChannelScale:
     are heavy-tailed by construction -- a CUSUM's whole purpose is to grow
     without bound when something is wrong -- and a mean would be set by the
     tail it is supposed to measure against.
+
+    `estimator` records which rung of the fallback ladder produced the
+    dispersion, so a scale that had to reach past the IQR is visible in the
+    frozen artifact instead of being indistinguishable from a clean one.
     """
 
     median: float
     dispersion: float
     n_steps: int
+    estimator: str = "iqr"
+
+    @property
+    def usable(self) -> bool:
+        """Can this channel be placed on the common scale at all?"""
+        return self.dispersion > _MIN_DISPERSION
 
     def to_common_scale(self, value: float) -> float:
-        return (value - self.median) / max(self.dispersion, _MIN_DISPERSION)
+        if not self.usable:
+            raise ValueError(
+                "channel has no healthy dispersion to normalize against; it "
+                "must be excluded from the fusion, not divided by a floor")
+        return (value - self.median) / self.dispersion
 
 
 def scoreable(episode: Episode) -> bool:
@@ -125,11 +169,32 @@ class NormalizedFusionMonitor(OnlineMonitor):
         scales = []
         for values in per_channel:
             arr = np.asarray(values, dtype=float)
-            q25, q50, q75 = np.quantile(arr, [0.25, 0.50, 0.75])
-            scales.append(ChannelScale(median=float(q50),
-                                       dispersion=float(q75 - q25),
-                                       n_steps=int(arr.size)))
+            dispersion, estimator = _dispersion(arr)
+            scales.append(ChannelScale(median=float(np.median(arr)),
+                                       dispersion=dispersion,
+                                       n_steps=int(arr.size),
+                                       estimator=estimator))
+        if not any(scale.usable for scale in scales):
+            raise ValueError(
+                f"{self.name}: every channel's healthy null is constant on "
+                f"the scale fold, so none can be normalized. This is a "
+                f"telemetry or fold-size problem, not something to floor "
+                f"away -- the fusion would be decided by arithmetic rather "
+                f"than evidence.")
         self.scales = scales
+
+    @property
+    def active_channels(self) -> tuple[str, ...]:
+        """Channels that carry a usable healthy scale, in fusion order.
+
+        A channel whose healthy null is constant is excluded rather than
+        normalized. Reporting it here keeps that exclusion visible: a fusion
+        that quietly became single-channel should not look like a two-channel
+        one.
+        """
+        if self.scales is None:
+            return ()
+        return tuple(c for c, s in zip(self.channels, self.scales) if s.usable)
 
     # ------------------------------------------------------------ scoring
 
@@ -155,7 +220,11 @@ class NormalizedFusionMonitor(OnlineMonitor):
                 raw = cusum / max(scored_so_far, 1)
             else:
                 raw = sub.last_raw_increment
-            values.append(scale.to_common_scale(raw))
+            # An unusable channel is still stepped -- its reservoir state has
+            # to stay in sync -- but it cannot enter the max, because it has
+            # no scale that would make its magnitude comparable.
+            values.append(scale.to_common_scale(raw) if scale.usable
+                          else -np.inf)
         self._i += 1
         self._last_channel_values = values
         return max(values)
