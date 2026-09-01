@@ -85,7 +85,7 @@ class FusionProtocol:
     min_scale_episodes: int = 40
     min_threshold_episodes: int = 80
 
-    #: Untouched, evaluation only. Set by Sunny on 2026-08-24. At 300 an
+    #: Untouched, evaluation only. At 300 an
     #: observed 2% false-alarm rate still bounds below 5% (exact 95% CI
     #: 0.007-0.043); at 24 even a zero observation bounds only at 14.2%.
     untouched_test_episodes: int = 300

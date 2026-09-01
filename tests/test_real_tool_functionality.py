@@ -190,8 +190,8 @@ def test_every_committed_real_tool_call_is_replay_resolvable():
     current `tool_fingerprint()` key or the one legacy (pre-fingerprint) key
     -- the two lookups `ToolRegistry.call()` actually tries.
 
-    This is the repo-wide regression guard for the 2026-08-18
-    cassette-fingerprint investigation: `tool_fingerprint()` gained a source
+    This is the repo-wide regression guard for the cassette-fingerprint
+    defect: `tool_fingerprint()` gained a source
     digest in `5556356` without bumping `CASSETTE_SCHEMA_VERSION`, silently
     orphaning ~45% of the real-tool corpus's calls (found via replay
     KeyErrors nothing in CI exercised). Intentionally-uncached error calls
@@ -275,10 +275,10 @@ def test_tool_fingerprint_shape_is_pinned_to_the_schema_version():
     silently orphaned every cassette recorded under the old shape (see
     `test_every_committed_real_tool_call_is_replay_resolvable`). If this test
     fails, the fingerprint's shape changed: decide explicitly whether that
-    needs a `CASSETTE_SCHEMA_VERSION` bump and a corpus-wide re-key (like the
-    2026-08-18 Option B migration) before updating the pinned values below.
+    needs a `CASSETTE_SCHEMA_VERSION` bump and a corpus-wide re-key (as the
+    earlier key migration did) before updating the pinned values below.
 
-    `root` and `db_path` were removed 2026-08-18: both resolve to absolute
+    `root` and `db_path` are excluded: both resolve to absolute
     filesystem paths (the checkout root, the runtime fixture path), so hashing
     them made the key checkout-dependent -- a cassette recorded on one machine
     could never replay on another, which is exactly the class of bug this
@@ -305,7 +305,7 @@ def test_tool_fingerprint_does_not_depend_on_the_absolute_checkout_path():
     prevent: `ReadFile`/`ListDir`/`SQLDatabaseTool` must fingerprint
     identically regardless of where the workspace or fixture happens to be
     mounted, or a cassette recorded on one machine can never replay on
-    another (found 2026-08-18 via a CI failure on a fresh checkout that
+    another (surfaced by a CI failure on a fresh checkout that
     passed on the recording machine)."""
     import tempfile
 
