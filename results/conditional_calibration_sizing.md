@@ -105,18 +105,92 @@ the same 80 calibration episodes it already has — the 2.0× row. Reaching 1.5�
 needs 477 healthy episodes per deployment, an additional 180 on top of what
 exists.
 
+## The model was checked against the implemented rule, not just derived
+
+The Beta-product derivation assumes more than it states: that the two stages
+are independent, that the conditional population the second threshold is
+calibrated on is exchangeable with the one it meets at serving time, and that
+the serving-time passage count behaves like the fixed count the calibration
+fold takes on. None of those are free. The gate threshold is estimated from the
+same sample that supplies the conditional values, so the conditional fold is
+selected by its own gate statistic; if the two channels are correlated within
+an episode that selection is not neutral. At serving time passage is random.
+
+So the implemented alarm rule was run end to end against a population where the
+truth is computable -- 1,500 calibration draws per configuration, each realized
+rate measured on 20,000 fresh healthy episodes -- with a per-episode latent term
+driving both channels so the correlation could be swept rather than assumed
+away.
+
+| allocation | rho | n_calib | median realized (emp / model) | 95th pct (emp / model) |
+|---|---|---|---|---|
+| gate 0.25 / cond 0.20 | 0.0 | 80 | 0.0419 / 0.0434 | 0.0888 / 0.0897 |
+| gate 0.25 / cond 0.20 | 0.9 | 80 | 0.0440 / 0.0434 | 0.0906 / 0.0899 |
+| gate 0.25 / cond 0.20 | 0.9 | 320 | 0.0488 / 0.0483 | 0.0722 / 0.0704 |
+| gate 0.50 / cond 0.10 | 0.9 | 320 | 0.0495 / 0.0486 | 0.0730 / 0.0707 |
+| gate 1.00 / cond 0.05 | 0.9 | 320 | 0.0500 / 0.0487 | 0.0716 / 0.0710 |
+
+Across all eighteen configurations the largest disagreement in the 95th
+percentile is **0.0043**, and it does not grow with correlation: rho = 0.9
+tracks rho = 0 as closely as either tracks the model. The analytic sizing can
+be relied on for this procedure.
+
+## What an "at most 5%" claim actually costs
+
+Everything above sizes the *average* case: calibrating at a nominal 5% puts the
+median realized rate at 5%, so half of deployments land above it. A claim that
+the false alarm rate is at most 5% is a different and stronger statement, and
+it needs a different rule.
+
+The distribution-free one-sided tolerance bound gives it: choose the k-th
+largest of n healthy calibration values, with k the largest integer whose
+`Beta(k, n+1-k)` 95th percentile still fits under 5%. That guarantees, with 95%
+confidence, that a fresh healthy episode alarms at most 5% of the time -- for
+any score distribution, with no parametric assumption. It is paid for in
+sensitivity, because the nominal rate it can afford is k/(n+1), strictly below
+the budget:
+
+| n_calib | k | nominal rate afforded | guaranteed upper bound | budget usable |
+|---|---|---|---|---|
+| 80 | 1 | 0.0123 | 0.0368 | 25% |
+| 160 | 4 | 0.0248 | 0.0477 | 50% |
+| 320 | 10 | 0.0312 | 0.0486 | 62% |
+| 640 | 23 | 0.0359 | 0.0487 | 72% |
+| 1280 | 51 | 0.0398 | 0.0492 | 80% |
+| 3000 | 131 | 0.0437 | 0.0500 | 87% |
+
+At the 80 calibration episodes available today the rule can only afford a
+nominal 1.2% -- a threshold set at the single largest healthy value -- which
+throws away three quarters of the budget and with it most of the detector's
+sensitivity. That is the real cost of the current fold, and it is why 80
+episodes reproduce the existing nominal-5% procedure but cannot support the
+final claim.
+
+### Predeclared
+
+For the final production standard, the false alarm calibration uses the
+**distribution-free 95% one-sided tolerance bound**: threshold at the k-th
+largest healthy calibration value, k the largest integer with
+`BetaInv(0.95; k, n+1-k) <= 0.05`. The standard fold is **n_calib = 640**,
+which affords a nominal 3.6% under a guaranteed ceiling of 4.87% and keeps 72%
+of the budget usable. With the fit and scale folds held at their current
+adequate sizes that is **857 healthy episodes per deployment**.
+
+This is predeclared rather than chosen after seeing results, and it applies to
+the flat detector and the conditional design alike. Two alternatives are on the
+same curve if the collection cost is judged wrong: n_calib = 320 keeps 62% of
+the budget for 537 episodes, and n_calib = 1280 keeps 80% for 1,497.
+
 ## Consequence for the complementary design
 
 The conditional design is not blocked on a conditional-fold problem specific to
-it. It is blocked on the same calibration evidence the flat detector is
-blocked on, and it should be built when that evidence exists rather than
-before. The gating requirement is **260 calibration episodes, or 477 healthy
-episodes per deployment under a fixed fit and scale fold**, for a 1.5×
-tolerance at 95% confidence.
+it. It is blocked on the same calibration evidence the flat detector is blocked
+on, and it should be built when that evidence exists rather than before.
 
 Until then the corrected disjoint fit / scale / calibration procedure stays as
 it is, the 5% total budget is unchanged, and the complementary design remains
 unrun.
 
-Derivation: `_internal/deployment_healthy_collection/size_conditional_calibration.py`;
-figures in `conditional_calibration_sizing.json`.
+Derivation: `_internal/deployment_healthy_collection/size_conditional_calibration.py`
+and `validate_two_stage_sizing.py`; figures in
+`conditional_calibration_sizing.json` and `two_stage_sizing_validation.json`.
