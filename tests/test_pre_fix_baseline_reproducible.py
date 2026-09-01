@@ -94,7 +94,7 @@ def test_a_lock_recorded_against_a_different_freeze_is_refused(tmp_path,
 
 def test_proving_compatibility_is_refused_when_behaviour_changed(monkeypatch):
     monkeypatch.setattr(baseline_lock, "reconstruction_digest",
-                        lambda: "f" * 64)
+                        lambda proving_equivalence=False: "f" * 64)
     monkeypatch.setattr(baseline_lock, "_dirty", lambda paths: [])
     with pytest.raises(SystemExit, match="reconstructs a different monitor"):
         baseline_lock.prove(_lock())

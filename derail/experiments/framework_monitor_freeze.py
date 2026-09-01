@@ -316,7 +316,8 @@ def _proven_compatible_blobs(freeze_path: Path = OUT_PATH) -> dict[str, list[str
     return compat.get("compatible_dependency_blob_hashes", {})
 
 
-def load_frozen_monitor(freeze_path: Path = OUT_PATH):
+def load_frozen_monitor(freeze_path: Path = OUT_PATH,
+                        proving_equivalence: bool = False):
     """Re-fit the monitor described by an existing freeze artifact.
 
     No model is persisted (esn.py fits deterministically from code+seed+data,
@@ -340,7 +341,12 @@ def load_frozen_monitor(freeze_path: Path = OUT_PATH):
     # Consulted only when something has actually drifted, so an unchanged
     # tree never depends on the companion lock existing or being current.
     proven = _proven_compatible_blobs() if drifted else {}
-    for path, current_blob in drifted.items():
+    # `--prove` has to RUN the drifted tree to find out whether it reconstructs
+    # the same monitor; refusing here would make equivalence unprovable and the
+    # lock permanently unwidenable. Nothing is weakened: the proof still fails
+    # unless the reconstruction digest matches exactly, and that digest is a
+    # stronger check than any blob hash.
+    for path, current_blob in ({} if proving_equivalence else drifted).items():
         frozen_blob = artifact["dependency_blob_hashes"][path]
         if current_blob in proven.get(path, ()):
             continue

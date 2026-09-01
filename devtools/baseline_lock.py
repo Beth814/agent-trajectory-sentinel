@@ -110,7 +110,7 @@ def _sha256_file(path: Path) -> str:
         path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
-def reconstruction_digest() -> str:
+def reconstruction_digest(proving_equivalence: bool = False) -> str:
     """SHA-256 over the frozen monitor's own per-step scores.
 
     Stronger than any source hash: it is the monitor's behaviour on the
@@ -120,7 +120,8 @@ def reconstruction_digest() -> str:
     from derail.experiments.framework_monitor_freeze import load_frozen_monitor
     from derail.telemetry.adapter import episode_from_trace
 
-    monitor, _, _ = load_frozen_monitor()
+    monitor, _, _ = load_frozen_monitor(
+        proving_equivalence=proving_equivalence)
     h = hashlib.sha256()
     for corpus in DIGEST_CORPORA:
         corpus_dir = REPO_ROOT / "traces" / corpus
@@ -188,7 +189,7 @@ def check(lock: dict) -> list[str]:
             f"--prove")
     if problems:
         return problems                    # a digest now would just re-raise
-    digest = reconstruction_digest()
+    digest = reconstruction_digest(proving_equivalence=True)
     if digest != lock["reconstruction_digest"]:
         problems.append(
             f"the frozen monitor no longer reproduces its own scores "
@@ -205,7 +206,7 @@ def prove(lock: dict) -> dict:
             f"[baseline-lock] REFUSED: {', '.join(dirty)} have unstaged "
             f"edits; stage them before proving, or the proof records a blob "
             f"hash for code that was never run.")
-    digest = reconstruction_digest()
+    digest = reconstruction_digest(proving_equivalence=True)
     if digest != lock["reconstruction_digest"]:
         raise SystemExit(
             f"[baseline-lock] REFUSED: this tree reconstructs a different "
