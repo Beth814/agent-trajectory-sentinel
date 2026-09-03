@@ -66,7 +66,6 @@ from derail.intervene.checkpoint import GroundingReference
 from derail.intervene.effects import (EffectPolicy,
                                       assert_no_duplicate_effects)
 from derail.intervene.real_tool_rollback import (HALTED, NOT_TRIGGERED,
-                                                 ORACLE_UPPER_BOUND, PRIMARY,
                                                  RECONSTRUCTION_FAILED,
                                                  BUDGET_EXHAUSTED,
                                                  RECOVERED, STILL_WRONG,

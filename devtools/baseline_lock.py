@@ -66,11 +66,27 @@ PUBLISHED = (
 #: digest covers the monitor as it was actually used, not a synthetic probe.
 DIGEST_CORPORA = ("langgraph7b_real", "autogen7b_real")
 
-#: Same quantisation the freeze uses on feature arrays, for the same reason:
-#: these scores run through log and ridge solves, whose last place differs
-#: between platform libm builds, and the digest has to travel off the machine
-#: that recorded it.
-DIGEST_DP = 6
+#: The baseline is compared as NUMBERS, within a tolerance, not as a hash.
+#:
+#: These scores run through log and ridge solves, whose last place differs
+#: between platform BLAS and libm builds, so a digest recorded on one machine
+#: does not reproduce on another: the original rule rounded to six DECIMALS,
+#: which on a CUSUM statistic reaching the high hundreds demanded about ten
+#: significant digits of cross-platform agreement, and it failed the first
+#: time the lock left the machine that wrote it.
+#:
+#: Rounding harder only moves the problem. Any hash of quantised floats has a
+#: cliff at the rounding boundary, and its real margin is set by whichever
+#: score happens to land nearest one -- measured at 3.5e-09 for six
+#: significant figures, barely seven times the rule that already failed.
+#: Comparing the scores themselves against a relative tolerance has no cliff:
+#: the margin is the tolerance, at every magnitude, whatever the data does.
+#:
+#: The tolerance is far tighter than any real change in the detector. A
+#: revision that alters what the monitor does moves these scores in their
+#: first few digits, not their seventh.
+DIGEST_RTOL = 1e-6
+DIGEST_ATOL = 1e-9
 
 MONITOR_VERSION = "esn_cusum_max[e,m]/v1-prefix"
 
@@ -110,19 +126,21 @@ def _sha256_file(path: Path) -> str:
         path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
-def reconstruction_digest(proving_equivalence: bool = False) -> str:
-    """SHA-256 over the frozen monitor's own per-step scores.
+def reference_scores(proving_equivalence: bool = False) -> dict:
+    """The frozen monitor's own per-step scores, per episode.
 
     Stronger than any source hash: it is the monitor's behaviour on the
-    episodes it was published against. Two trees agreeing here reconstruct
-    the same detector whatever their source looks like.
+    episodes it was published against. Two trees agreeing here reconstruct the
+    same detector whatever their source looks like -- and because the scores
+    are kept rather than hashed, a tree that disagrees says which episode
+    diverged and by how much.
     """
     from derail.experiments.framework_monitor_freeze import load_frozen_monitor
     from derail.telemetry.adapter import episode_from_trace
 
     monitor, _, _ = load_frozen_monitor(
         proving_equivalence=proving_equivalence)
-    h = hashlib.sha256()
+    out = {}
     for corpus in DIGEST_CORPORA:
         corpus_dir = REPO_ROOT / "traces" / corpus
         manifest = json.loads((corpus_dir / "manifest.json").read_text("utf-8"))
@@ -134,12 +152,39 @@ def reconstruction_digest(proving_equivalence: bool = False) -> str:
                                     use_sentence_transformers=False,
                                     extended=True)
             monitor.start_episode()
-            scores = np.array([monitor.score_step(ep.X[t])
-                               for t in range(ep.X.shape[0])])
-            h.update(entry["episode_id"].encode("utf-8"))
-            h.update(np.ascontiguousarray(
-                np.round(scores, DIGEST_DP) + 0.0).tobytes())
-    return h.hexdigest()
+            out[entry["episode_id"]] = [float(monitor.score_step(ep.X[t]))
+                                        for t in range(ep.X.shape[0])]
+    return out
+
+
+def score_problems(locked: dict, current: dict) -> list[str]:
+    """Where the reconstruction departs from the recorded baseline."""
+    problems = []
+    missing = sorted(set(locked) - set(current))
+    extra = sorted(set(current) - set(locked))
+    if missing:
+        problems.append("%d recorded episodes are no longer scored, first %s"
+                        % (len(missing), missing[0]))
+    if extra:
+        problems.append("%d episodes are scored that the baseline never "
+                        "recorded, first %s" % (len(extra), extra[0]))
+    for episode_id in sorted(set(locked) & set(current)):
+        want = np.asarray(locked[episode_id], dtype=float)
+        got = np.asarray(current[episode_id], dtype=float)
+        if want.shape != got.shape:
+            problems.append("%s: %d steps scored against %d recorded"
+                            % (episode_id, got.size, want.size))
+            continue
+        if np.allclose(got, want, rtol=DIGEST_RTOL, atol=DIGEST_ATOL):
+            continue
+        off = np.abs(got - want) / np.maximum(np.abs(want), DIGEST_ATOL)
+        worst = int(np.argmax(off))
+        problems.append(
+            "%s: step %d scores %.9g against the recorded %.9g "
+            "(relative %.2e, tolerance %g)"
+            % (episode_id, worst, got[worst], want[worst],
+               off.max(), DIGEST_RTOL))
+    return problems
 
 
 def build_lock() -> dict:
@@ -161,9 +206,10 @@ def build_lock() -> dict:
         "baseline_commit": _git("rev-parse", "HEAD"),
         "dependency_blob_hashes": {p: _blob(p) for p in DEPENDENCY_FILES},
         "compatible_dependency_blob_hashes": {},
-        "reconstruction_digest": reconstruction_digest(),
+        "reference_scores": reference_scores(),
         "digest_corpora": list(DIGEST_CORPORA),
-        "digest_decimals": DIGEST_DP,
+        "digest_rtol": DIGEST_RTOL,
+        "digest_atol": DIGEST_ATOL,
     }
 
 
@@ -189,12 +235,13 @@ def check(lock: dict) -> list[str]:
             f"--prove")
     if problems:
         return problems                    # a digest now would just re-raise
-    digest = reconstruction_digest(proving_equivalence=True)
-    if digest != lock["reconstruction_digest"]:
-        problems.append(
-            f"the frozen monitor no longer reproduces its own scores "
-            f"({lock['reconstruction_digest'][:12]}... -> {digest[:12]}...); "
-            f"the pre-fix baseline is NOT reproducible from this tree")
+    departures = score_problems(lock["reference_scores"],
+                                reference_scores(proving_equivalence=True))
+    if departures:
+        problems.append("the frozen monitor no longer reproduces its own "
+                        "scores; the pre-fix baseline is NOT reproducible "
+                        "from this tree")
+        problems.extend("  " + d for d in departures[:5])
     return problems
 
 
@@ -206,14 +253,14 @@ def prove(lock: dict) -> dict:
             f"[baseline-lock] REFUSED: {', '.join(dirty)} have unstaged "
             f"edits; stage them before proving, or the proof records a blob "
             f"hash for code that was never run.")
-    digest = reconstruction_digest(proving_equivalence=True)
-    if digest != lock["reconstruction_digest"]:
+    scores = reference_scores(proving_equivalence=True)
+    departures = score_problems(lock["reference_scores"], scores)
+    if departures:
         raise SystemExit(
-            f"[baseline-lock] REFUSED: this tree reconstructs a different "
-            f"monitor ({digest[:12]}... vs the locked "
-            f"{lock['reconstruction_digest'][:12]}...). A revision that "
-            f"changes the frozen monitor's behaviour cannot be recorded as "
-            f"compatible with it -- give the new detector its own freeze.")
+            "[baseline-lock] REFUSED: this tree reconstructs a different "
+            "monitor -- " + departures[0] + ". A revision that changes "
+            "the frozen monitor's behaviour cannot be recorded as "
+            "compatible with it -- give the new detector its own freeze.")
     allowed = lock.setdefault("compatible_dependency_blob_hashes", {})
     added = []
     for path, pinned in lock["dependency_blob_hashes"].items():
@@ -223,7 +270,7 @@ def prove(lock: dict) -> dict:
             added.append(f"{path} -> {current[:12]}")
     lock["proofs"] = lock.get("proofs", []) + [{
         "commit": _git("rev-parse", "HEAD"),
-        "digest": digest,
+        "scores_matched": sum(len(v) for v in scores.values()),
         "added": added,
     }]
     return lock
@@ -259,7 +306,9 @@ def main(argv: list[str] | None = None) -> None:
     if problems:
         raise SystemExit(1)
     print(f"[baseline-lock] pre-fix baseline {lock['monitor_version']} "
-          f"reproduces: digest {lock['reconstruction_digest'][:12]}... over "
+          f"reproduces: "
+          f"{sum(len(v) for v in lock['reference_scores'].values())} scores "
+          f"within {lock['digest_rtol']:g} over "
           f"{len(lock['digest_corpora'])} corpora, "
           f"{len(lock['dependency_blob_hashes'])} dependencies pinned")
 

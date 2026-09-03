@@ -93,11 +93,56 @@ def test_a_lock_recorded_against_a_different_freeze_is_refused(tmp_path,
 
 
 def test_proving_compatibility_is_refused_when_behaviour_changed(monkeypatch):
-    monkeypatch.setattr(baseline_lock, "reconstruction_digest",
-                        lambda proving_equivalence=False: "f" * 64)
+    lock = _lock()
+    moved = {k: [v + 1.0 for v in vs]
+             for k, vs in lock["reference_scores"].items()}
+    monkeypatch.setattr(baseline_lock, "reference_scores",
+                        lambda proving_equivalence=False: moved)
     monkeypatch.setattr(baseline_lock, "_dirty", lambda paths: [])
     with pytest.raises(SystemExit, match="reconstructs a different monitor"):
-        baseline_lock.prove(_lock())
+        baseline_lock.prove(lock)
+
+
+def test_proving_records_how_much_it_matched(monkeypatch):
+    """The success path, which the refusal test above never reaches.
+
+    `prove` walks the dependency files after comparing scores, and that loop
+    binds its own name for each blob hash. A proof summary that read the
+    wrong name would only fail here, once the loop has actually run.
+    """
+    lock = json.loads(json.dumps(_lock()))
+    monkeypatch.setattr(baseline_lock, "_dirty", lambda paths: [])
+    monkeypatch.setattr(baseline_lock, "reference_scores",
+                        lambda proving_equivalence=False:
+                        lock["reference_scores"])
+    proven = baseline_lock.prove(lock)
+    assert proven["proofs"][-1]["scores_matched"] == sum(
+        len(v) for v in lock["reference_scores"].values())
+
+
+def test_the_baseline_survives_last_place_arithmetic_but_not_a_real_change():
+    """The reason the comparison is a tolerance and not a hash.
+
+    These scores come out of log and ridge solves, so their last places
+    differ between platform BLAS builds and a digest recorded on one machine
+    does not reproduce on another. A relative nudge far larger than any such
+    difference must still read as the same monitor, while a change of the
+    size an altered detector produces must not.
+    """
+    locked = _lock()["reference_scores"]
+    nudged = {k: [v * (1.0 + 1e-9) for v in vs] for k, vs in locked.items()}
+    assert baseline_lock.score_problems(locked, nudged) == []
+
+    changed = {k: [v * 1.01 for v in vs] for k, vs in locked.items()}
+    problems = baseline_lock.score_problems(locked, changed)
+    assert problems and "relative" in problems[0]
+
+
+def test_a_dropped_episode_is_not_silently_ignored():
+    locked = _lock()["reference_scores"]
+    short = {k: v for k, v in list(locked.items())[1:]}
+    assert any("no longer scored" in p
+               for p in baseline_lock.score_problems(locked, short))
 
 
 def test_the_first_changed_file_is_not_lost_when_parsing_git(monkeypatch):
