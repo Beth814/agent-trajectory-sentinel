@@ -103,7 +103,7 @@ TABLES_DIR = RESULTS_DIR / "tables"
 SCORES_DIR = RESULTS_DIR / "scores"
 FIGURES_DIR = RESULTS_DIR / "figures"  # populated later by experiments/plots.py
 
-FA_BUDGET = 0.05        # H1: healthy-val false-alarm budget for theta
+FA_BUDGET = 0.10        # H1: healthy-val false-alarm budget for theta
 FA_BUDGET_SOFT = 0.10   # H3b: softer trigger threshold for escalation
 CONF_THRESHOLDS = (0.5, 0.7, 0.8, 0.9, 0.95, 0.99)
 STREAMS = ("fused", "surprise", "disagreement")
