@@ -792,3 +792,53 @@ The target was the five-seed synthetic evaluation of `esn_cusum_max`, focusing o
 git clone https://github.com/Beth814/agent-trajectory-sentinel.git
 cd agent-trajectory-sentinel
 pip install -r requirements-core.lock.txt
+
+```
+
+### Quick Test
+
+```bash
+python -m derail.experiments.run_experiment --quick --seed 999
+```
+
+### Five-Seed Reproduction
+
+```bash
+python -m derail.experiments.run_multiseed 2>&1 | tee baseline_full_log.txt
+```
+
+### Modification
+
+One isolated parameter was changed in `derail/experiments/run_experiment.py`.
+
+```python
+# Original setting
+FA_BUDGET = 0.05
+
+# Modified setting
+FA_BUDGET = 0.10
+```
+
+The modification relaxes the H1 healthy-validation false-alarm budget from 5% to 10%.
+
+The modified five-seed experiment was run using:
+
+```bash
+python -m derail.experiments.run_multiseed 2>&1 | tee modified_full_log.txt
+```
+
+### Results
+
+| Metric | Baseline 5% FA budget | Modified 10% FA budget | Change |
+|---|---:|---:|---:|
+| Detection rate | 0.707 ± 0.068 | 0.740 ± 0.026 | +0.033 |
+| Mean steps saved | 4.61 ± 0.97 | 5.48 ± 0.81 | +0.87 |
+| AUC | 0.872 ± 0.015 | 0.872 ± 0.015 | 0.000 |
+
+The relaxed false-alarm budget increased the detection rate and allowed failures to be detected earlier, while AUC remained unchanged. However, this improvement was achieved under a more permissive false-alarm budget, so it represents a trade-off rather than a cost-free performance improvement.
+
+### Reproducibility Notebook
+
+The complete Colab workflow, including environment checks, baseline reproduction, parameter modification, quick testing, and the modified five-seed experiment, is available here:
+
+[FTEC5660 Reproducibility Notebook](FTEC5660_Reproducibility_AgentTrajectorySentinel_Final.ipynb)
