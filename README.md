@@ -760,3 +760,35 @@ check at the source.
 
 Per-corpus detail, including which episode counts each condition applies to,
 is in [`DATA_CARD.md`](DATA_CARD.md#licensing).
+
+---
+
+## FTEC5660 Reproducibility Study
+
+This section documents an individual reproducibility study of AgentTrajectorySentinel for FTEC5660.
+
+### Reproduction Target
+
+The target was the five-seed synthetic evaluation of `esn_cusum_max`, focusing on:
+
+- Detection rate (`det`)
+- Mean number of steps saved before failure (`lead_all`)
+- Area under the ROC curve (`AUC`)
+
+### Environment
+
+- Platform: Google Colab
+- Hardware accelerator: CPU
+- Python: 3.13.18
+- NumPy: 2.4.6
+- Pandas: 3.0.3
+- Scikit-learn: 1.9.0
+- SciPy: 1.17.1
+- External API keys: Not required
+
+### Installation
+
+```bash
+git clone https://github.com/Beth814/agent-trajectory-sentinel.git
+cd agent-trajectory-sentinel
+pip install -r requirements-core.lock.txt
